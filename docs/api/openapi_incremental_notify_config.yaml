@@ -1,0 +1,920 @@
+openapi: 3.0.3
+info:
+  title: Patch Lifecycle Incremental API (Mail + Config)
+  version: 1.0.0
+  description: |
+    增量接口定义，仅覆盖“邮件通知系统”和“配置管理系统”新增能力。
+    鉴权采用请求头：X-Tenant-Id、X-User-Id、X-Roles（可选，空时由后端回填）。
+servers:
+  - url: http://localhost:8080
+tags:
+  - name: MailNotify
+    description: 邮件通知配置与日志
+  - name: ConfigMgmt
+    description: 配置管理（场景、产品、角色、权限、用户角色作用域）
+
+paths:
+  /api/v1/notify/mail/servers:
+    post:
+      tags: [MailNotify]
+      summary: 新增或更新SMTP配置
+      parameters:
+        - $ref: '#/components/parameters/XTenantId'
+        - $ref: '#/components/parameters/XUserId'
+        - $ref: '#/components/parameters/XRoles'
+        - $ref: '#/components/parameters/XTraceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MailServerConfigUpsertRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseMailServerConfig'
+    get:
+      tags: [MailNotify]
+      summary: 查询SMTP配置列表
+      parameters:
+        - $ref: '#/components/parameters/XTenantId'
+        - $ref: '#/components/parameters/XUserId'
+        - $ref: '#/components/parameters/XRoles'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseMailServerConfigList'
+
+  /api/v1/notify/mail/templates:
+    post:
+      tags: [MailNotify]
+      summary: 新增或更新邮件模板
+      parameters:
+        - $ref: '#/components/parameters/XTenantId'
+        - $ref: '#/components/parameters/XUserId'
+        - $ref: '#/components/parameters/XRoles'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MailTemplateUpsertRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseMailTemplate'
+    get:
+      tags: [MailNotify]
+      summary: 查询邮件模板列表
+      parameters:
+        - $ref: '#/components/parameters/XTenantId'
+        - $ref: '#/components/parameters/XUserId'
+        - $ref: '#/components/parameters/XRoles'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseMailTemplateList'
+
+  /api/v1/notify/mail/templates/render:
+    post:
+      tags: [MailNotify]
+      summary: 模板渲染预览
+      parameters:
+        - $ref: '#/components/parameters/XTenantId'
+        - $ref: '#/components/parameters/XUserId'
+        - $ref: '#/components/parameters/XRoles'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MailTemplateRenderRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseMailTemplateRender'
+
+  /api/v1/notify/mail/event-policies:
+    post:
+      tags: [MailNotify]
+      summary: 新增或更新事件通知策略
+      parameters:
+        - $ref: '#/components/parameters/XTenantId'
+        - $ref: '#/components/parameters/XUserId'
+        - $ref: '#/components/parameters/XRoles'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MailEventPolicyUpsertRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseMailEventPolicy'
+    get:
+      tags: [MailNotify]
+      summary: 查询事件通知策略列表
+      parameters:
+        - $ref: '#/components/parameters/XTenantId'
+        - $ref: '#/components/parameters/XUserId'
+        - $ref: '#/components/parameters/XRoles'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseMailEventPolicyList'
+
+  /api/v1/notify/mail/logs:
+    get:
+      tags: [MailNotify]
+      summary: 查询邮件发送日志
+      parameters:
+        - $ref: '#/components/parameters/XTenantId'
+        - $ref: '#/components/parameters/XUserId'
+        - $ref: '#/components/parameters/XRoles'
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseMailSendLogList'
+
+  /api/v1/notify/mail/logs/{logId}/resend:
+    post:
+      tags: [MailNotify]
+      summary: 手动重发邮件
+      parameters:
+        - $ref: '#/components/parameters/XTenantId'
+        - $ref: '#/components/parameters/XUserId'
+        - $ref: '#/components/parameters/XRoles'
+        - in: path
+          name: logId
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseMailSendLog'
+
+  /api/v1/config/scenarios:
+    post:
+      tags: [ConfigMgmt]
+      summary: 新增或更新交付场景
+      parameters:
+        - $ref: '#/components/parameters/XTenantId'
+        - $ref: '#/components/parameters/XUserId'
+        - $ref: '#/components/parameters/XRoles'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfigScenarioUpsertRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseConfigScenario'
+    get:
+      tags: [ConfigMgmt]
+      summary: 查询交付场景列表
+      parameters:
+        - $ref: '#/components/parameters/XTenantId'
+        - $ref: '#/components/parameters/XUserId'
+        - $ref: '#/components/parameters/XRoles'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseConfigScenarioList'
+
+  /api/v1/config/products:
+    post:
+      tags: [ConfigMgmt]
+      summary: 新增或更新产品
+      parameters:
+        - $ref: '#/components/parameters/XTenantId'
+        - $ref: '#/components/parameters/XUserId'
+        - $ref: '#/components/parameters/XRoles'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfigProductUpsertRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseConfigProduct'
+    get:
+      tags: [ConfigMgmt]
+      summary: 查询产品列表
+      parameters:
+        - $ref: '#/components/parameters/XTenantId'
+        - $ref: '#/components/parameters/XUserId'
+        - $ref: '#/components/parameters/XRoles'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseConfigProductList'
+
+  /api/v1/config/scenario-products:
+    post:
+      tags: [ConfigMgmt]
+      summary: 场景绑定产品列表
+      parameters:
+        - $ref: '#/components/parameters/XTenantId'
+        - $ref: '#/components/parameters/XUserId'
+        - $ref: '#/components/parameters/XRoles'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfigScenarioProductBindRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseLongList'
+
+  /api/v1/config/roles:
+    post:
+      tags: [ConfigMgmt]
+      summary: 新增或更新角色
+      parameters:
+        - $ref: '#/components/parameters/XTenantId'
+        - $ref: '#/components/parameters/XUserId'
+        - $ref: '#/components/parameters/XRoles'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfigRoleUpsertRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseConfigRole'
+    get:
+      tags: [ConfigMgmt]
+      summary: 查询角色列表
+      parameters:
+        - $ref: '#/components/parameters/XTenantId'
+        - $ref: '#/components/parameters/XUserId'
+        - $ref: '#/components/parameters/XRoles'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseConfigRoleList'
+
+  /api/v1/config/permissions:
+    post:
+      tags: [ConfigMgmt]
+      summary: 新增或更新权限点
+      parameters:
+        - $ref: '#/components/parameters/XTenantId'
+        - $ref: '#/components/parameters/XUserId'
+        - $ref: '#/components/parameters/XRoles'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfigPermissionUpsertRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseConfigPermission'
+    get:
+      tags: [ConfigMgmt]
+      summary: 查询权限点列表
+      parameters:
+        - $ref: '#/components/parameters/XTenantId'
+        - $ref: '#/components/parameters/XUserId'
+        - $ref: '#/components/parameters/XRoles'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseConfigPermissionList'
+
+  /api/v1/config/roles/{roleId}/permissions:
+    post:
+      tags: [ConfigMgmt]
+      summary: 覆盖式分配角色权限
+      parameters:
+        - $ref: '#/components/parameters/XTenantId'
+        - $ref: '#/components/parameters/XUserId'
+        - $ref: '#/components/parameters/XRoles'
+        - in: path
+          name: roleId
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: integer
+                format: int64
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseConfigRolePermission'
+    get:
+      tags: [ConfigMgmt]
+      summary: 查询角色权限
+      parameters:
+        - $ref: '#/components/parameters/XTenantId'
+        - $ref: '#/components/parameters/XUserId'
+        - $ref: '#/components/parameters/XRoles'
+        - in: path
+          name: roleId
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseConfigRolePermission'
+
+  /api/v1/config/user-role-scopes:
+    post:
+      tags: [ConfigMgmt]
+      summary: 分配用户角色作用域
+      parameters:
+        - $ref: '#/components/parameters/XTenantId'
+        - $ref: '#/components/parameters/XUserId'
+        - $ref: '#/components/parameters/XRoles'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfigUserRoleScopeAssignRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseConfigUserRoleScope'
+
+  /api/v1/config/users/{userId}/role-scopes:
+    get:
+      tags: [ConfigMgmt]
+      summary: 查询用户角色作用域
+      parameters:
+        - $ref: '#/components/parameters/XTenantId'
+        - $ref: '#/components/parameters/XUserId'
+        - $ref: '#/components/parameters/XRoles'
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseConfigUserRoleScopeList'
+
+components:
+  parameters:
+    XTenantId:
+      in: header
+      name: X-Tenant-Id
+      required: true
+      schema:
+        type: integer
+        format: int64
+    XUserId:
+      in: header
+      name: X-User-Id
+      required: true
+      schema:
+        type: integer
+        format: int64
+    XRoles:
+      in: header
+      name: X-Roles
+      required: false
+      description: 逗号分隔角色编码；为空时后端自动按用户回填
+      schema:
+        type: string
+    XTraceId:
+      in: header
+      name: X-Trace-Id
+      required: false
+      schema:
+        type: string
+
+  schemas:
+    ApiResponseBase:
+      type: object
+      properties:
+        code:
+          type: string
+          example: "0"
+        message:
+          type: string
+          example: OK
+      required: [code, message]
+
+    ApiResponseMailServerConfig:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseBase'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/MailServerConfigResponse'
+    ApiResponseMailServerConfigList:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseBase'
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/MailServerConfigResponse'
+
+    ApiResponseMailTemplate:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseBase'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/MailTemplateResponse'
+    ApiResponseMailTemplateList:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseBase'
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/MailTemplateResponse'
+    ApiResponseMailTemplateRender:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseBase'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/MailTemplateRenderResponse'
+
+    ApiResponseMailEventPolicy:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseBase'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/MailEventPolicyResponse'
+    ApiResponseMailEventPolicyList:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseBase'
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/MailEventPolicyResponse'
+    ApiResponseMailSendLog:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseBase'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/MailSendLogResponse'
+    ApiResponseMailSendLogList:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseBase'
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/MailSendLogResponse'
+
+    ApiResponseConfigScenario:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseBase'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/ConfigScenarioResponse'
+    ApiResponseConfigScenarioList:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseBase'
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/ConfigScenarioResponse'
+
+    ApiResponseConfigProduct:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseBase'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/ConfigProductResponse'
+    ApiResponseConfigProductList:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseBase'
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/ConfigProductResponse'
+
+    ApiResponseConfigRole:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseBase'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/ConfigRoleResponse'
+    ApiResponseConfigRoleList:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseBase'
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/ConfigRoleResponse'
+
+    ApiResponseConfigPermission:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseBase'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/ConfigPermissionResponse'
+    ApiResponseConfigPermissionList:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseBase'
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/ConfigPermissionResponse'
+
+    ApiResponseConfigRolePermission:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseBase'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/ConfigRolePermissionResponse'
+    ApiResponseConfigUserRoleScope:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseBase'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/ConfigUserRoleScopeResponse'
+    ApiResponseConfigUserRoleScopeList:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseBase'
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/ConfigUserRoleScopeResponse'
+    ApiResponseLongList:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseBase'
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                type: integer
+                format: int64
+
+    MailServerConfigUpsertRequest:
+      type: object
+      required: [configName, smtpHost, smtpPort, senderEmail]
+      properties:
+        configName: { type: string, maxLength: 64 }
+        smtpHost: { type: string, maxLength: 255 }
+        smtpPort: { type: integer, minimum: 1, maximum: 65535 }
+        protocol: { type: string, example: smtp }
+        username: { type: string }
+        password: { type: string }
+        senderEmail: { type: string, format: email }
+        senderName: { type: string }
+        sslEnabled: { type: boolean }
+        starttlsEnabled: { type: boolean }
+        authEnabled: { type: boolean }
+        timeoutMs: { type: integer, minimum: 1000 }
+        defaultConfig: { type: boolean }
+        enabled: { type: boolean }
+        extProps: { type: string, description: JSON字符串 }
+
+    MailServerConfigResponse:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        configName: { type: string }
+        smtpHost: { type: string }
+        smtpPort: { type: integer }
+        protocol: { type: string }
+        username: { type: string }
+        senderEmail: { type: string }
+        senderName: { type: string }
+        sslEnabled: { type: boolean }
+        starttlsEnabled: { type: boolean }
+        authEnabled: { type: boolean }
+        timeoutMs: { type: integer }
+        defaultConfig: { type: boolean }
+        enabled: { type: boolean }
+        updatedAt: { type: string, format: date-time }
+
+    MailTemplateUpsertRequest:
+      type: object
+      required: [templateCode, eventCode, subjectTpl, bodyTpl]
+      properties:
+        templateCode: { type: string, maxLength: 64 }
+        eventCode: { type: string, maxLength: 64 }
+        subjectTpl: { type: string }
+        bodyTpl: { type: string }
+        contentType: { type: string, enum: [TEXT, HTML] }
+        lang: { type: string, example: zh-CN }
+        version: { type: integer, minimum: 1 }
+        enabled: { type: boolean }
+        extProps: { type: string, description: JSON字符串 }
+
+    MailTemplateResponse:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        templateCode: { type: string }
+        eventCode: { type: string }
+        subjectTpl: { type: string }
+        bodyTpl: { type: string }
+        contentType: { type: string }
+        lang: { type: string }
+        version: { type: integer }
+        enabled: { type: boolean }
+        updatedAt: { type: string, format: date-time }
+
+    MailTemplateRenderRequest:
+      type: object
+      required: [templateCode]
+      properties:
+        templateCode: { type: string }
+        model:
+          type: object
+          additionalProperties: true
+    MailTemplateRenderResponse:
+      type: object
+      properties:
+        subject: { type: string }
+        body: { type: string }
+
+    MailEventPolicyUpsertRequest:
+      type: object
+      required: [eventCode, templateCode]
+      properties:
+        eventCode: { type: string, maxLength: 64 }
+        templateCode: { type: string, maxLength: 64 }
+        toRoleCodes:
+          type: array
+          items: { type: string }
+        ccRoleCodes:
+          type: array
+          items: { type: string }
+        includeOwner: { type: boolean }
+        includeOperator: { type: boolean }
+        enabled: { type: boolean }
+    MailEventPolicyResponse:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        eventCode: { type: string }
+        templateCode: { type: string }
+        toRoleCodes:
+          type: array
+          items: { type: string }
+        ccRoleCodes:
+          type: array
+          items: { type: string }
+        includeOwner: { type: boolean }
+        includeOperator: { type: boolean }
+        enabled: { type: boolean }
+        updatedAt: { type: string, format: date-time }
+
+    MailSendLogResponse:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        bizType: { type: string }
+        bizId: { type: integer, format: int64 }
+        eventCode: { type: string }
+        mailTo: { type: string }
+        mailCc: { type: string }
+        status: { type: string, enum: [PENDING, RETRY, SENT, FAILED] }
+        retryCount: { type: integer }
+        maxRetry: { type: integer }
+        errorCode: { type: string }
+        errorMessage: { type: string }
+        createdAt: { type: string, format: date-time }
+        sentAt: { type: string, format: date-time }
+
+    ConfigScenarioUpsertRequest:
+      type: object
+      required: [scenarioCode, scenarioName]
+      properties:
+        scenarioCode: { type: string, maxLength: 64 }
+        scenarioName: { type: string, maxLength: 128 }
+        description: { type: string }
+        status: { type: string, example: ACTIVE }
+        extProps: { type: string, description: JSON字符串 }
+    ConfigScenarioResponse:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        scenarioCode: { type: string }
+        scenarioName: { type: string }
+        description: { type: string }
+        status: { type: string }
+
+    ConfigProductUpsertRequest:
+      type: object
+      required: [productCode, productName]
+      properties:
+        productCode: { type: string, maxLength: 64 }
+        productName: { type: string, maxLength: 128 }
+        description: { type: string }
+        ownerUserId: { type: integer, format: int64 }
+        status: { type: string, example: ACTIVE }
+        extProps: { type: string, description: JSON字符串 }
+    ConfigProductResponse:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        productCode: { type: string }
+        productName: { type: string }
+        description: { type: string }
+        ownerUserId: { type: integer, format: int64 }
+        status: { type: string }
+        scenarioIds:
+          type: array
+          items: { type: integer, format: int64 }
+
+    ConfigScenarioProductBindRequest:
+      type: object
+      required: [scenarioId, productIds]
+      properties:
+        scenarioId: { type: integer, format: int64 }
+        productIds:
+          type: array
+          items: { type: integer, format: int64 }
+
+    ConfigRoleUpsertRequest:
+      type: object
+      required: [roleCode, roleName]
+      properties:
+        roleCode: { type: string, maxLength: 64 }
+        roleName: { type: string, maxLength: 128 }
+        roleLevel: { type: string, enum: [GLOBAL, SCENARIO, PRODUCT] }
+        scopeRefId: { type: integer, format: int64 }
+        enabled: { type: boolean }
+    ConfigRoleResponse:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        roleCode: { type: string }
+        roleName: { type: string }
+        roleLevel: { type: string }
+        scopeRefId: { type: integer, format: int64 }
+        enabled: { type: boolean }
+
+    ConfigPermissionUpsertRequest:
+      type: object
+      required: [permCode, permName, permType]
+      properties:
+        permCode: { type: string, maxLength: 128 }
+        permName: { type: string, maxLength: 128 }
+        permType: { type: string, example: API }
+        resource: { type: string }
+        action: { type: string }
+        parentId: { type: integer, format: int64 }
+        enabled: { type: boolean }
+    ConfigPermissionResponse:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        permCode: { type: string }
+        permName: { type: string }
+        permType: { type: string }
+        resource: { type: string }
+        action: { type: string }
+        parentId: { type: integer, format: int64 }
+        enabled: { type: boolean }
+
+    ConfigRolePermissionResponse:
+      type: object
+      properties:
+        roleId: { type: integer, format: int64 }
+        permCodes:
+          type: array
+          items: { type: string }
+
+    ConfigUserRoleScopeAssignRequest:
+      type: object
+      required: [userId, roleId]
+      properties:
+        userId: { type: integer, format: int64 }
+        roleId: { type: integer, format: int64 }
+        scopeLevel: { type: string, enum: [GLOBAL, SCENARIO, PRODUCT] }
+        scenarioId: { type: integer, format: int64 }
+        productId: { type: integer, format: int64 }
+        status: { type: string, example: ACTIVE }
+    ConfigUserRoleScopeResponse:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        userId: { type: integer, format: int64 }
+        roleId: { type: integer, format: int64 }
+        scopeLevel: { type: string }
+        scenarioId: { type: integer, format: int64 }
+        productId: { type: integer, format: int64 }
+        status: { type: string }
