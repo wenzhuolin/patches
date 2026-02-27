@@ -22,6 +22,11 @@ server {
         root /var/www/certbot;
     }
 
+    # 避免 Prometheus 指标被公网直接抓取
+    location = /actuator/prometheus {
+        return 403;
+    }
+
     location / {
         limit_req zone=patch_api_rate burst=60 nodelay;
         limit_conn patch_conn_limit 50;

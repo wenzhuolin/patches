@@ -113,6 +113,8 @@ docker compose -f docker-compose.prod.yml logs -f app
 
 ```bash
 bash scripts/huawei/db-backup.sh
+bash scripts/huawei/prune-backups.sh 14
+# 恢复(危险): bash scripts/huawei/db-restore.sh backups/xxxx.sql
 ```
 
 7) 预检与上线后验收（建议）
@@ -120,6 +122,13 @@ bash scripts/huawei/db-backup.sh
 ```bash
 bash scripts/huawei/preflight-check.sh api.yourdomain.com
 bash scripts/huawei/post-deploy-smoke.sh http://127.0.0.1:8080
+```
+
+8) 安装监控（Prometheus + Grafana）
+
+```bash
+bash scripts/huawei/install-monitoring.sh
+bash scripts/huawei/monitoring-smoke.sh
 ```
 
 ### 3.3 域名、HTTPS、systemd、自启动与蓝绿发布
@@ -175,6 +184,22 @@ sudo bash scripts/huawei/bootstrap-production.sh \
 ### 3.5 运维 Runbook
 
 - `docs/ops/PROD_RUNBOOK.md`
+
+### 3.6 定时维护任务（备份+证书续期）
+
+```bash
+sudo bash scripts/huawei/install-maintenance-cron.sh /opt/patch-lifecycle
+```
+
+### 3.7 GitHub Actions 自动化（可选）
+
+已内置：
+- `.github/workflows/ci.yml`（单元/集成测试流程）
+- `.github/workflows/docker-build.yml`（镜像构建验证）
+- `.github/workflows/deploy-huawei.yml`（手动触发远程部署）
+
+使用部署工作流前，请在仓库 Secrets 配置：
+- `SSH_PRIVATE_KEY`
 
 ## 4. 关键请求头
 

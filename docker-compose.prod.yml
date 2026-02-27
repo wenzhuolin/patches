@@ -24,6 +24,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 6
+    networks:
+      - patch_internal
 
   app:
     build:
@@ -44,7 +46,13 @@ services:
       - "${APP_BIND_IP:-127.0.0.1}:${APP_PORT:-8080}:8080"
     volumes:
       - app_logs:/app/logs
+    networks:
+      - patch_internal
 
 volumes:
   pg_data:
   app_logs:
+
+networks:
+  patch_internal:
+    name: patch-lifecycle-internal

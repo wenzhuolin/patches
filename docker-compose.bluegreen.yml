@@ -24,6 +24,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 6
+    networks:
+      - patch_internal
 
   app-blue:
     build:
@@ -44,6 +46,8 @@ services:
       - "${BLUE_BIND_IP:-127.0.0.1}:${BLUE_PORT:-18080}:8080"
     volumes:
       - app_logs_blue:/app/logs
+    networks:
+      - patch_internal
 
   app-green:
     build:
@@ -64,8 +68,14 @@ services:
       - "${GREEN_BIND_IP:-127.0.0.1}:${GREEN_PORT:-28080}:8080"
     volumes:
       - app_logs_green:/app/logs
+    networks:
+      - patch_internal
 
 volumes:
   pg_data_bg:
   app_logs_blue:
   app_logs_green:
+
+networks:
+  patch_internal:
+    name: patch-lifecycle-internal

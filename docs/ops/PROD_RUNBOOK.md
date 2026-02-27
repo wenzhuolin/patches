@@ -96,7 +96,31 @@ bash scripts/huawei/db-backup.sh
 bash scripts/huawei/db-restore.sh backups/<backup-file>.sql
 ```
 
-## 8. 常用排障命令
+建议配置定时任务：
+
+```bash
+sudo bash scripts/huawei/install-maintenance-cron.sh /opt/patch-lifecycle
+```
+
+## 8. 监控安装与检查
+
+安装：
+
+```bash
+bash scripts/huawei/install-monitoring.sh
+```
+
+检查：
+
+```bash
+bash scripts/huawei/monitoring-smoke.sh
+```
+
+访问：
+- Prometheus: `http://127.0.0.1:9090`
+- Grafana: `http://127.0.0.1:3000`
+
+## 9. 常用排障命令
 
 ```bash
 docker compose -f docker-compose.bluegreen.yml ps
@@ -109,7 +133,7 @@ sudo systemctl status nginx --no-pager
 sudo systemctl status patch-lifecycle.service --no-pager
 ```
 
-## 9. 安全建议（强烈推荐）
+## 10. 安全建议（强烈推荐）
 
 1. PostgreSQL 保持 `127.0.0.1` 绑定，不要暴露公网
 2. SSH 使用密钥登录，禁用密码登录
@@ -119,4 +143,5 @@ sudo systemctl status patch-lifecycle.service --no-pager
    ```
 4. 定期备份数据库并把备份异地存储
 5. 对 `.env` 做最小权限控制（`chmod 600 .env`）
+6. 监控端口（9090/3000）建议仅监听本机并通过堡垒机访问
 

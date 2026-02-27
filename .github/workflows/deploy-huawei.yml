@@ -1,0 +1,66 @@
+name: Deploy to Huawei Cloud
+
+on:
+  workflow_dispatch:
+    inputs:
+      host:
+        description: "Server host/IP"
+        required: true
+        type: string
+      user:
+        description: "SSH user"
+        required: true
+        default: "ubuntu"
+        type: string
+      remote_dir:
+        description: "Remote app directory"
+        required: true
+        default: "/opt/patch-lifecycle"
+        type: string
+      mode:
+        description: "Deploy mode"
+        required: true
+        default: "bluegreen"
+        type: choice
+        options:
+          - prod
+          - bluegreen
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Package source
+        run: |
+          tar --exclude='.git' --exclude='target' --exclude='.maven' -czf patch-lifecycle.tar.gz .
+
+      - name: Upload package
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ inputs.host }}
+          username: ${{ inputs.user }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "patch-lifecycle.tar.gz"
+          target: "/tmp"
+
+      - name: Deploy remotely
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ inputs.host }}
+          username: ${{ inputs.user }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -euo pipefail
+            sudo mkdir -p "${{ inputs.remote_dir }}"
+            sudo tar -xzf /tmp/patch-lifecycle.tar.gz -C "${{ inputs.remote_dir }}"
+            sudo rm -f /tmp/patch-lifecycle.tar.gz
+            cd "${{ inputs.remote_dir }}"
+            if [ "${{ inputs.mode }}" = "bluegreen" ]; then
+              sudo bash scripts/huawei/deploy-bluegreen.sh
+            else
+              sudo bash scripts/huawei/deploy.sh
+            fi
+            bash scripts/huawei/post-deploy-smoke.sh http://127.0.0.1:${APP_PORT:-8080} || true
