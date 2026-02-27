@@ -27,6 +27,13 @@
 6. **安全审计**
    - 操作审计日志（PATCH/KPI/QA/TEST/REVIEW）
    - 关键操作保留 traceId / IP / User-Agent
+7. **动态权限与数据权限（新增）**
+   - RBAC动作权限支持数据库动态配置（角色-动作）
+   - 支持用户数据权限范围（GLOBAL/PRODUCT_LINE）
+   - 补丁创建、查询、流转均执行数据权限校验
+8. **CI集成（新增）**
+   - 支持集成连接器配置
+   - 支持CI webhook入站，自动采集并写入KPI指标
 
 ## 2. 技术栈
 
@@ -88,6 +95,19 @@ Swagger 地址：
 - `GET /api/v1/qa/tasks/my-pending` 查询我的QA待办
 - `POST /api/v1/qa/tasks/{qaTaskId}/decision` QA审批
 
+### IAM（动态权限）
+
+- `POST /api/v1/iam/role-action-permissions` 配置角色动作权限
+- `GET /api/v1/iam/role-action-permissions?action=TRANSFER_TO_TEST` 查询动作权限
+- `POST /api/v1/iam/user-data-scopes` 授予用户数据范围
+- `GET /api/v1/iam/users/{userId}/data-scopes` 查询用户数据范围
+
+### 集成（CI/CD）
+
+- `POST /api/v1/integrations/connectors` 配置集成连接器
+- `GET /api/v1/integrations/connectors` 查询连接器
+- `POST /api/v1/integrations/ci/webhook` CI指标入站并落库
+
 ### 转测与评审
 
 - `GET /api/v1/patches/{patchId}/test-tasks` 查询转测任务
@@ -100,8 +120,9 @@ Swagger 地址：
 Flyway 脚本：
 
 - `src/main/resources/db/migration/V1__init_schema.sql`
+- `src/main/resources/db/migration/V2__iam_and_integration.sql`
 
-已包含核心表：`patch / patch_transition_log / kpi_* / qa_* / test_task / review_* / patch_operation_log`
+已包含核心表：`patch / patch_transition_log / kpi_* / qa_* / test_task / review_* / patch_operation_log / role_action_permission / user_data_scope / integration_connector`
 
 ## 7. 设计说明
 

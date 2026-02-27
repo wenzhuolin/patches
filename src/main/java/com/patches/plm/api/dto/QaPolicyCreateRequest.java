@@ -13,7 +13,7 @@ public record QaPolicyCreateRequest(
         @NotBlank String requiredLevels,
         String scopeType,
         String scopeValue,
-        boolean enabled,
+        Boolean enabled,
         OffsetDateTime effectiveFrom,
         OffsetDateTime effectiveTo
 ) {

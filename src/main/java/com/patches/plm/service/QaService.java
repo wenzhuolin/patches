@@ -13,6 +13,7 @@ import com.patches.plm.domain.enums.Decision;
 import com.patches.plm.domain.enums.QaApprovalMode;
 import com.patches.plm.domain.enums.QaTaskStatus;
 import com.patches.plm.domain.enums.StageType;
+import com.patches.plm.domain.repository.PatchRepository;
 import com.patches.plm.domain.repository.QaDecisionLogRepository;
 import com.patches.plm.domain.repository.QaPolicyRepository;
 import com.patches.plm.domain.repository.QaTaskRepository;
@@ -34,15 +35,18 @@ public class QaService {
     private final QaPolicyRepository qaPolicyRepository;
     private final QaTaskRepository qaTaskRepository;
     private final QaDecisionLogRepository qaDecisionLogRepository;
+    private final PatchRepository patchRepository;
     private final AuditLogService auditLogService;
     private final AccessControlService accessControlService;
 
     public QaService(QaPolicyRepository qaPolicyRepository, QaTaskRepository qaTaskRepository,
-                     QaDecisionLogRepository qaDecisionLogRepository, AuditLogService auditLogService,
+                     QaDecisionLogRepository qaDecisionLogRepository, PatchRepository patchRepository,
+                     AuditLogService auditLogService,
                      AccessControlService accessControlService) {
         this.qaPolicyRepository = qaPolicyRepository;
         this.qaTaskRepository = qaTaskRepository;
         this.qaDecisionLogRepository = qaDecisionLogRepository;
+        this.patchRepository = patchRepository;
         this.auditLogService = auditLogService;
         this.accessControlService = accessControlService;
     }
@@ -59,7 +63,7 @@ public class QaService {
         policy.setRequiredLevels(request.requiredLevels());
         policy.setScopeType(request.scopeType() == null || request.scopeType().isBlank() ? "GLOBAL" : request.scopeType());
         policy.setScopeValue(request.scopeValue());
-        policy.setEnabled(request.enabled());
+        policy.setEnabled(request.enabled() == null || request.enabled());
         policy.setEffectiveFrom(request.effectiveFrom());
         policy.setEffectiveTo(request.effectiveTo());
         policy.setCreatedBy(context.userId());
@@ -84,10 +88,10 @@ public class QaService {
         if (policies.isEmpty()) {
             return new QaCheckResult(true, false, List.of("未配置QA策略"));
         }
-        QaPolicyEntity policy = policies.stream()
-                .sorted(Comparator.comparing((QaPolicyEntity p) -> "PRODUCT_LINE".equalsIgnoreCase(p.getScopeType()) ? 0 : 1))
-                .findFirst()
-                .orElseThrow();
+        QaPolicyEntity policy = selectEffectivePolicy(policies);
+        if (policy == null) {
+            return new QaCheckResult(true, false, List.of("未命中有效QA策略"));
+        }
 
         List<QaTaskEntity> tasks = qaTaskRepository.findByTenantIdAndPatchIdAndStageOrderBySequenceNoAsc(tenantId, patchId, stage);
         if (tasks.isEmpty()) {
@@ -107,6 +111,15 @@ public class QaService {
         if (passed) {
             return new QaCheckResult(true, false, List.of("QA审批通过"));
         }
+        if (policy.getApprovalMode() == QaApprovalMode.SEQUENTIAL) {
+            QaTaskEntity next = tasks.stream()
+                    .filter(t -> t.getStatus() == QaTaskStatus.PENDING)
+                    .min(Comparator.comparingInt(QaTaskEntity::getSequenceNo))
+                    .orElse(null);
+            if (next != null) {
+                return new QaCheckResult(false, false, List.of("等待顺序审批: " + next.getQaLevel()));
+            }
+        }
         return new QaCheckResult(false, false, List.of("QA审批尚未完成"));
     }
 
@@ -114,7 +127,7 @@ public class QaService {
     public List<QaTaskResponse> listMyPending(Long tenantId, RequestContext context) {
         List<String> assigneeIds = new ArrayList<>();
         assigneeIds.add(String.valueOf(context.userId()));
-        assigneeIds.addAll(context.roles());
+        assigneeIds.addAll(context.roles().stream().map(v -> v.toUpperCase(Locale.ROOT)).toList());
         return qaTaskRepository.findByTenantIdAndStatusAndAssigneeIdIn(tenantId, QaTaskStatus.PENDING, assigneeIds)
                 .stream()
                 .map(this::toResponse)
@@ -131,6 +144,25 @@ public class QaService {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "QA任务已处理");
         }
         assertTaskAssignee(context, task);
+
+        var patch = patchRepository.findByIdAndTenantId(task.getPatchId(), tenantId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "补丁不存在"));
+        QaPolicyEntity policy = selectEffectivePolicy(qaPolicyRepository.findActivePolicies(
+                tenantId, task.getStage(), String.valueOf(patch.getProductLineId()), OffsetDateTime.now()
+        ));
+        if (policy != null && policy.getApprovalMode() == QaApprovalMode.SEQUENTIAL) {
+            List<QaTaskEntity> allStageTasks = qaTaskRepository.findByTenantIdAndPatchIdAndStageOrderBySequenceNoAsc(
+                    tenantId, task.getPatchId(), task.getStage()
+            );
+            int minPending = allStageTasks.stream()
+                    .filter(t -> t.getStatus() == QaTaskStatus.PENDING)
+                    .mapToInt(QaTaskEntity::getSequenceNo)
+                    .min()
+                    .orElse(task.getSequenceNo());
+            if (task.getSequenceNo() != minPending) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST, "顺序审批模式下，请先处理前序QA节点");
+            }
+        }
 
         task.setStatus(request.decision() == Decision.APPROVE ? QaTaskStatus.APPROVED : QaTaskStatus.REJECTED);
         task.setDecisionComment(request.comment());
@@ -175,13 +207,32 @@ public class QaService {
             task.setStage(stage);
             task.setQaLevel(level);
             task.setAssigneeType("ROLE");
-            task.setAssigneeId("QA");
+            task.setAssigneeId(resolveAssigneeRole(level));
             task.setSequenceNo(i + 1);
             task.setStatus(QaTaskStatus.PENDING);
             task.setCreatedBy(operatorId);
             task.setUpdatedBy(operatorId);
             qaTaskRepository.save(task);
         }
+    }
+
+    private String resolveAssigneeRole(String level) {
+        return switch (level) {
+            case "PRODUCT_LINE_QA" -> "PRODUCT_LINE_QA";
+            case "PROJECT_QA" -> "PROJECT_QA";
+            case "REVIEW_BOARD", "INDEPENDENT_REVIEW_BOARD" -> "REVIEW_BOARD";
+            default -> "QA";
+        };
+    }
+
+    private QaPolicyEntity selectEffectivePolicy(List<QaPolicyEntity> policies) {
+        if (policies == null || policies.isEmpty()) {
+            return null;
+        }
+        return policies.stream()
+                .sorted(Comparator.comparing((QaPolicyEntity p) -> "PRODUCT_LINE".equalsIgnoreCase(p.getScopeType()) ? 0 : 1))
+                .findFirst()
+                .orElse(null);
     }
 
     private QaTaskResponse toResponse(QaTaskEntity task) {

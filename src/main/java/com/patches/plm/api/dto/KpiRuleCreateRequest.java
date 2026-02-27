@@ -24,6 +24,6 @@ public record KpiRuleCreateRequest(
         String scopeValue,
         OffsetDateTime effectiveFrom,
         OffsetDateTime effectiveTo,
-        boolean enabled
+        Boolean enabled
 ) {
 }

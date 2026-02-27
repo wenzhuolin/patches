@@ -52,9 +52,7 @@ public class PatchService {
 
     @Transactional
     public PatchResponse createPatch(PatchCreateRequest request, RequestContext context) {
-        if (!(context.roles().contains("PM") || context.roles().contains("LINE_ADMIN") || context.roles().contains("SUPER_ADMIN"))) {
-            throw new BusinessException(ErrorCode.FORBIDDEN, "仅PM/产品线管理员可创建补丁");
-        }
+        accessControlService.assertCanCreatePatch(context, request.productLineId());
 
         PatchEntity entity = new PatchEntity();
         entity.setTenantId(context.tenantId());
@@ -82,14 +80,15 @@ public class PatchService {
     public PatchResponse getPatch(Long patchId, RequestContext context) {
         PatchEntity patch = patchRepository.findByIdAndTenantId(patchId, context.tenantId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "补丁不存在"));
+        accessControlService.assertCanViewPatch(context, patch);
         return toResponse(patch);
     }
 
     @Transactional
     public PatchActionResponse executeAction(Long patchId, PatchActionRequest request, RequestContext context) {
-        accessControlService.assertCanExecuteAction(context.roles(), request.action());
         PatchEntity patch = patchRepository.lockByIdAndTenantId(patchId, context.tenantId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "补丁不存在"));
+        accessControlService.assertCanExecuteAction(context, request.action(), patch);
         if (transitionLogRepository.existsByPatchIdAndRequestId(patchId, context.requestId())) {
             throw new BusinessException(ErrorCode.DUPLICATE_REQUEST, "重复请求，请更换Idempotency-Key");
         }

@@ -58,7 +58,7 @@ public class KpiService {
         entity.setScopeValue(request.scopeValue());
         entity.setEffectiveFrom(request.effectiveFrom());
         entity.setEffectiveTo(request.effectiveTo());
-        entity.setEnabled(request.enabled());
+        entity.setEnabled(request.enabled() == null || request.enabled());
         entity.setCreatedBy(context.userId());
         entity.setUpdatedBy(context.userId());
         KpiRuleEntity saved = kpiRuleRepository.save(entity);
