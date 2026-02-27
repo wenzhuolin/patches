@@ -1,0 +1,15 @@
+spring:
+  jpa:
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: false
+
+server:
+  shutdown: graceful
+  forward-headers-strategy: framework
+
+management:
+  endpoint:
+    health:
+      show-details: never

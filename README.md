@@ -50,7 +50,9 @@
 - 文档：OpenAPI（Swagger UI）
 - 测试：JUnit 5
 
-## 3. 运行方式
+## 3. 运行与部署
+
+### 3.1 本地运行
 
 > 需要可用 PostgreSQL 实例（默认连接参数见 `application.yml`，可用环境变量覆盖）
 
@@ -70,6 +72,48 @@ export DB_PASSWORD=patches
 Swagger 地址：
 
 - `http://localhost:8080/swagger-ui.html`
+
+### 3.2 华为云 Linux 一键部署（Docker Compose）
+
+适用场景：你有一台带公网IP的 Linux 服务器，想快速部署和联调。
+
+1) 服务器初始化（安装 Docker / Compose / 防火墙放行）
+
+```bash
+sudo APP_PORT=8080 DB_PORT=5432 bash scripts/huawei/server-init.sh
+```
+
+2) 准备环境变量
+
+```bash
+cp .env.example .env
+# 修改 POSTGRES_PASSWORD 等配置
+```
+
+3) 在服务器上部署（仓库已在服务器）
+
+```bash
+bash scripts/huawei/deploy.sh
+```
+
+4) 从本地机器远程发布到服务器（可选）
+
+```bash
+bash scripts/huawei/deploy-remote.sh ubuntu@<你的公网IP> /opt/patch-lifecycle
+```
+
+5) 健康检查与日志
+
+```bash
+bash scripts/huawei/healthcheck.sh http://127.0.0.1:8080
+docker compose -f docker-compose.prod.yml logs -f app
+```
+
+6) 数据库备份（可选）
+
+```bash
+bash scripts/huawei/db-backup.sh
+```
 
 ## 4. 关键请求头
 
