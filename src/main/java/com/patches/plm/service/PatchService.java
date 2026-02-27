@@ -3,13 +3,17 @@ package com.patches.plm.service;
 import com.patches.plm.api.dto.PatchActionRequest;
 import com.patches.plm.api.dto.PatchActionResponse;
 import com.patches.plm.api.dto.PatchCreateRequest;
+import com.patches.plm.api.dto.PatchOperationLogResponse;
 import com.patches.plm.api.dto.PatchResponse;
+import com.patches.plm.api.dto.PatchTransitionLogResponse;
 import com.patches.plm.common.ErrorCode;
 import com.patches.plm.common.exception.BusinessException;
 import com.patches.plm.domain.entity.PatchEntity;
+import com.patches.plm.domain.entity.PatchOperationLogEntity;
 import com.patches.plm.domain.entity.PatchTransitionLogEntity;
 import com.patches.plm.domain.entity.TestTaskEntity;
 import com.patches.plm.domain.enums.*;
+import com.patches.plm.domain.repository.PatchOperationLogRepository;
 import com.patches.plm.domain.repository.PatchRepository;
 import com.patches.plm.domain.repository.PatchTransitionLogRepository;
 import com.patches.plm.domain.repository.TestTaskRepository;
@@ -34,11 +38,13 @@ public class PatchService {
     private final KpiService kpiService;
     private final QaService qaService;
     private final TestTaskRepository testTaskRepository;
+    private final PatchOperationLogRepository patchOperationLogRepository;
     private final AuditLogService auditLogService;
 
     public PatchService(PatchRepository patchRepository, PatchTransitionLogRepository transitionLogRepository,
                         PatchStateMachine patchStateMachine, AccessControlService accessControlService,
                         KpiService kpiService, QaService qaService, TestTaskRepository testTaskRepository,
+                        PatchOperationLogRepository patchOperationLogRepository,
                         AuditLogService auditLogService) {
         this.patchRepository = patchRepository;
         this.transitionLogRepository = transitionLogRepository;
@@ -47,6 +53,7 @@ public class PatchService {
         this.kpiService = kpiService;
         this.qaService = qaService;
         this.testTaskRepository = testTaskRepository;
+        this.patchOperationLogRepository = patchOperationLogRepository;
         this.auditLogService = auditLogService;
     }
 
@@ -82,6 +89,62 @@ public class PatchService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "补丁不存在"));
         accessControlService.assertCanViewPatch(context, patch);
         return toResponse(patch);
+    }
+
+    @Transactional(readOnly = true)
+    public List<PatchResponse> listPatches(PatchState state, RequestContext context) {
+        List<PatchEntity> all = state == null
+                ? patchRepository.findByTenantIdOrderByUpdatedAtDesc(context.tenantId())
+                : patchRepository.findByTenantIdAndCurrentStateOrderByUpdatedAtDesc(context.tenantId(), state);
+        return all.stream()
+                .filter(patch -> canViewPatchQuietly(context, patch))
+                .map(this::toResponse)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<PatchTransitionLogResponse> listTransitions(Long patchId, RequestContext context) {
+        PatchEntity patch = patchRepository.findByIdAndTenantId(patchId, context.tenantId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "补丁不存在"));
+        accessControlService.assertCanViewPatch(context, patch);
+        return transitionLogRepository.findByTenantIdAndPatchIdOrderByCreatedAtDesc(context.tenantId(), patchId)
+                .stream()
+                .map(log -> new PatchTransitionLogResponse(
+                        log.getId(),
+                        log.getFromState() == null ? null : log.getFromState().name(),
+                        log.getToState() == null ? null : log.getToState().name(),
+                        log.getAction().name(),
+                        log.getResult().name(),
+                        log.getBlockType().name(),
+                        log.getBlockReason(),
+                        log.getOperatorId(),
+                        log.getRequestId(),
+                        log.getCreatedAt()
+                ))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<PatchOperationLogResponse> listOperationLogs(Long patchId, RequestContext context) {
+        PatchEntity patch = patchRepository.findByIdAndTenantId(patchId, context.tenantId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "补丁不存在"));
+        accessControlService.assertCanViewPatch(context, patch);
+        List<PatchOperationLogEntity> logs = patchOperationLogRepository.findByTenantIdAndBizTypeAndBizIdOrderByCreatedAtDesc(
+                context.tenantId(), "PATCH", patchId
+        );
+        return logs.stream().map(log -> new PatchOperationLogResponse(
+                log.getId(),
+                log.getBizType(),
+                log.getBizId(),
+                log.getAction(),
+                log.getBeforeData(),
+                log.getAfterData(),
+                log.getOperatorId(),
+                log.getTraceId(),
+                log.getIp(),
+                log.getUserAgent(),
+                log.getCreatedAt()
+        )).toList();
     }
 
     @Transactional
@@ -208,5 +271,14 @@ public class PatchService {
                 patch.getSeverity(),
                 patch.getPriority()
         );
+    }
+
+    private boolean canViewPatchQuietly(RequestContext context, PatchEntity patch) {
+        try {
+            accessControlService.assertCanViewPatch(context, patch);
+            return true;
+        } catch (BusinessException ex) {
+            return false;
+        }
     }
 }

@@ -34,6 +34,14 @@
 8. **CI集成（新增）**
    - 支持集成连接器配置
    - 支持CI webhook入站，自动采集并写入KPI指标
+9. **用户/角色与附件（新增）**
+   - 支持用户、角色、用户角色关系管理
+   - RequestContext 在未传 `X-Roles` 时可从数据库回填用户角色
+   - 支持补丁流程附件元数据管理（各阶段上传记录）
+10. **流程可观测（新增）**
+   - 支持补丁列表查询（按状态）
+   - 支持流转历史查询与补丁级操作日志查询
+   - 支持按业务类型查询审计日志（KPI/QA/TEST/REVIEW等）
 
 ## 2. 技术栈
 
@@ -69,7 +77,7 @@ Swagger 地址：
 
 - `X-Tenant-Id`：租户ID（Long）
 - `X-User-Id`：用户ID（Long）
-- `X-Roles`：角色集合（逗号分隔，如 `PM,QA`）
+- `X-Roles`：角色集合（逗号分隔，如 `PM,QA`）；可选，不传时会尝试从 `user_role_relation` 回填
 - `Idempotency-Key`：幂等键（建议每次动作唯一）
 - `X-Trace-Id`：链路追踪ID（可选，不传则自动生成）
 
@@ -78,8 +86,13 @@ Swagger 地址：
 ### 补丁流程
 
 - `POST /api/v1/patches` 创建补丁
+- `GET /api/v1/patches?state=REVIEWING` 查询补丁列表
 - `GET /api/v1/patches/{patchId}` 查询补丁
 - `POST /api/v1/patches/{patchId}/actions` 执行状态流转动作
+- `GET /api/v1/patches/{patchId}/transitions` 查询流转历史
+- `GET /api/v1/patches/{patchId}/operation-logs` 查询补丁操作日志
+- `POST /api/v1/patches/{patchId}/attachments` 新增附件记录
+- `GET /api/v1/patches/{patchId}/attachments` 查询附件记录
 
 ### KPI
 
@@ -102,11 +115,24 @@ Swagger 地址：
 - `POST /api/v1/iam/user-data-scopes` 授予用户数据范围
 - `GET /api/v1/iam/users/{userId}/data-scopes` 查询用户数据范围
 
+### 用户角色管理
+
+- `POST /api/v1/admin/roles` 创建/更新角色
+- `GET /api/v1/admin/roles` 查询角色
+- `POST /api/v1/admin/users` 创建/更新用户
+- `GET /api/v1/admin/users` 查询用户
+- `POST /api/v1/admin/users/roles` 绑定用户角色
+- `GET /api/v1/admin/users/{userId}/roles` 查询用户角色
+
 ### 集成（CI/CD）
 
 - `POST /api/v1/integrations/connectors` 配置集成连接器
 - `GET /api/v1/integrations/connectors` 查询连接器
 - `POST /api/v1/integrations/ci/webhook` CI指标入站并落库
+
+### 审计查询
+
+- `GET /api/v1/audit/logs?bizType=KPI_RULE` 按业务类型查询审计日志
 
 ### 转测与评审
 
@@ -121,8 +147,9 @@ Flyway 脚本：
 
 - `src/main/resources/db/migration/V1__init_schema.sql`
 - `src/main/resources/db/migration/V2__iam_and_integration.sql`
+- `src/main/resources/db/migration/V3__user_role_and_attachment.sql`
 
-已包含核心表：`patch / patch_transition_log / kpi_* / qa_* / test_task / review_* / patch_operation_log / role_action_permission / user_data_scope / integration_connector`
+已包含核心表：`patch / patch_transition_log / kpi_* / qa_* / test_task / review_* / patch_operation_log / role_action_permission / user_data_scope / integration_connector / sys_user / user_role_relation / patch_attachment`
 
 ## 7. 设计说明
 
