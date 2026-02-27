@@ -40,6 +40,7 @@ class PatchLifecycleIntegrationTest {
         registry.add("spring.datasource.password", postgres::getPassword);
         registry.add("spring.flyway.enabled", () -> true);
         registry.add("spring.jpa.hibernate.ddl-auto", () -> "validate");
+        registry.add("app.notify.mail.worker-interval-ms", () -> "3600000");
     }
 
     @Autowired
@@ -275,6 +276,218 @@ class PatchLifecycleIntegrationTest {
                         .content("{\"action\":\"SUBMIT_REVIEW\"}")
                         .headers(headersWithIdempotency(2L, 2010L, "REVIEWER")))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void shouldManageConfigAndCreateMailLog() throws Exception {
+        String suffix = UUID.randomUUID().toString().substring(0, 8);
+        Long tenantId = 3L;
+        String adminRole = "SUPER_ADMIN";
+
+        String scenarioBody = """
+                {
+                  "scenarioCode":"FIN_%s",
+                  "scenarioName":"金融场景-%s",
+                  "description":"金融行业交付"
+                }
+                """.formatted(suffix, suffix);
+        var scenarioResp = mockMvc.perform(post("/api/v1/config/scenarios")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(scenarioBody)
+                        .headers(headers(tenantId, 1L, adminRole)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+        Long scenarioId = json(scenarioResp).path("data").path("id").asLong();
+        Assertions.assertTrue(scenarioId > 0);
+
+        String productBody = """
+                {
+                  "productCode":"PAY_%s",
+                  "productName":"支付产品-%s",
+                  "description":"支付补丁管理"
+                }
+                """.formatted(suffix, suffix);
+        var productResp = mockMvc.perform(post("/api/v1/config/products")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(productBody)
+                        .headers(headers(tenantId, 1L, adminRole)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+        Long productId = json(productResp).path("data").path("id").asLong();
+        Assertions.assertTrue(productId > 0);
+
+        mockMvc.perform(post("/api/v1/config/scenario-products")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"scenarioId":%d,"productIds":[%d]}
+                                """.formatted(scenarioId, productId))
+                        .headers(headers(tenantId, 1L, adminRole)))
+                .andExpect(status().isOk());
+
+        String roleBody = """
+                {
+                  "roleCode":"SCENE_PM_%s",
+                  "roleName":"场景PM-%s",
+                  "roleLevel":"SCENARIO",
+                  "scopeRefId":%d,
+                  "enabled":true
+                }
+                """.formatted(suffix, suffix, scenarioId);
+        var roleResp = mockMvc.perform(post("/api/v1/config/roles")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(roleBody)
+                        .headers(headers(tenantId, 1L, adminRole)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+        Long roleId = json(roleResp).path("data").path("id").asLong();
+        Assertions.assertTrue(roleId > 0);
+
+        String permissionBody = """
+                {
+                  "permCode":"CONFIG_SCENARIO_VIEW_%s",
+                  "permName":"查看场景配置",
+                  "permType":"API",
+                  "resource":"SCENARIO",
+                  "action":"VIEW",
+                  "enabled":true
+                }
+                """.formatted(suffix);
+        var permissionResp = mockMvc.perform(post("/api/v1/config/permissions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(permissionBody)
+                        .headers(headers(tenantId, 1L, adminRole)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+        Long permissionId = json(permissionResp).path("data").path("id").asLong();
+        Assertions.assertTrue(permissionId > 0);
+
+        mockMvc.perform(post("/api/v1/config/roles/{roleId}/permissions", roleId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("[" + permissionId + "]")
+                        .headers(headers(tenantId, 1L, adminRole)))
+                .andExpect(status().isOk());
+
+        String ownerUserBody = """
+                {"username":"owner_%s","displayName":"Owner %s","email":"owner_%s@example.com","status":"ACTIVE"}
+                """.formatted(suffix, suffix, suffix);
+        var ownerResp = mockMvc.perform(post("/api/v1/admin/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(ownerUserBody)
+                        .headers(headers(tenantId, 1L, adminRole)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+        Long ownerUserId = json(ownerResp).path("data").path("id").asLong();
+        Assertions.assertTrue(ownerUserId > 0);
+
+        mockMvc.perform(post("/api/v1/config/user-role-scopes")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "userId":%d,
+                                  "roleId":%d,
+                                  "scopeLevel":"SCENARIO",
+                                  "scenarioId":%d,
+                                  "status":"ACTIVE"
+                                }
+                                """.formatted(ownerUserId, roleId, scenarioId))
+                        .headers(headers(tenantId, 1L, adminRole)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/v1/config/users/{userId}/role-scopes", ownerUserId)
+                        .headers(headers(tenantId, 1L, adminRole)))
+                .andExpect(status().isOk());
+
+        String mailServerBody = """
+                {
+                  "configName":"default-%s",
+                  "smtpHost":"127.0.0.1",
+                  "smtpPort":2525,
+                  "protocol":"smtp",
+                  "username":"demo",
+                  "password":"demo",
+                  "senderEmail":"noreply@example.com",
+                  "senderName":"Patch Bot",
+                  "starttlsEnabled":false,
+                  "sslEnabled":false,
+                  "authEnabled":false,
+                  "defaultConfig":true,
+                  "enabled":true
+                }
+                """.formatted(suffix);
+        mockMvc.perform(post("/api/v1/notify/mail/servers")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mailServerBody)
+                        .headers(headers(tenantId, 1L, adminRole)))
+                .andExpect(status().isOk());
+
+        String mailTemplateBody = """
+                {
+                  "templateCode":"PATCH_CREATED_%s",
+                  "eventCode":"PATCH_CREATED",
+                  "subjectTpl":"[补丁创建] ${patchNo}",
+                  "bodyTpl":"补丁 ${patchNo} 已创建，当前状态 ${currentState}，操作人 ${operatorId}",
+                  "contentType":"TEXT",
+                  "version":1,
+                  "enabled":true
+                }
+                """.formatted(suffix);
+        mockMvc.perform(post("/api/v1/notify/mail/templates")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mailTemplateBody)
+                        .headers(headers(tenantId, 1L, adminRole)))
+                .andExpect(status().isOk());
+
+        String policyBody = """
+                {
+                  "eventCode":"PATCH_CREATED",
+                  "templateCode":"PATCH_CREATED_%s",
+                  "includeOwner":true,
+                  "includeOperator":false,
+                  "enabled":true
+                }
+                """.formatted(suffix);
+        mockMvc.perform(post("/api/v1/notify/mail/event-policies")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(policyBody)
+                        .headers(headers(tenantId, 1L, adminRole)))
+                .andExpect(status().isOk());
+
+        String createPatchBody = """
+                {
+                  "productLineId":%d,
+                  "title":"通知测试补丁-%s",
+                  "description":"mail integration",
+                  "severity":"LOW",
+                  "priority":"P3",
+                  "sourceVersion":"v1",
+                  "targetVersion":"v1.0.1",
+                  "ownerPmId":%d
+                }
+                """.formatted(productId, suffix, ownerUserId);
+        mockMvc.perform(post("/api/v1/patches")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(createPatchBody)
+                        .headers(headers(tenantId, ownerUserId, "PM")))
+                .andExpect(status().isOk());
+
+        var logsResp = mockMvc.perform(get("/api/v1/notify/mail/logs")
+                        .headers(headers(tenantId, 1L, adminRole)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+        JsonNode logs = json(logsResp).path("data");
+        Assertions.assertTrue(logs.isArray() && logs.size() > 0);
+        JsonNode first = logs.get(0);
+        Assertions.assertEquals("PATCH_CREATED", first.path("eventCode").asText());
+        Assertions.assertTrue(first.path("mailTo").asText().contains("owner_" + suffix + "@example.com"));
+        Long logId = first.path("id").asLong();
+        Assertions.assertTrue(logId > 0);
+
+        var resendResp = mockMvc.perform(post("/api/v1/notify/mail/logs/{logId}/resend", logId)
+                        .headers(headers(tenantId, 1L, adminRole)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+        String resendStatus = json(resendResp).path("data").path("status").asText();
+        Assertions.assertTrue("RETRY".equals(resendStatus) || "PENDING".equals(resendStatus));
     }
 
     private org.springframework.http.HttpHeaders headers(Long tenantId, Long userId, String roles) {

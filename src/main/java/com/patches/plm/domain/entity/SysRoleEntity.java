@@ -19,6 +19,12 @@ public class SysRoleEntity extends AbstractAuditEntity {
     @Column(name = "role_name", nullable = false, length = 128)
     private String roleName;
 
+    @Column(name = "role_level", nullable = false, length = 16)
+    private String roleLevel = "GLOBAL";
+
+    @Column(name = "scope_ref_id")
+    private Long scopeRefId;
+
     @Column(name = "enabled", nullable = false)
     private boolean enabled = true;
 
@@ -52,6 +58,22 @@ public class SysRoleEntity extends AbstractAuditEntity {
 
     public void setRoleName(String roleName) {
         this.roleName = roleName;
+    }
+
+    public String getRoleLevel() {
+        return roleLevel;
+    }
+
+    public void setRoleLevel(String roleLevel) {
+        this.roleLevel = roleLevel;
+    }
+
+    public Long getScopeRefId() {
+        return scopeRefId;
+    }
+
+    public void setScopeRefId(Long scopeRefId) {
+        this.scopeRefId = scopeRefId;
     }
 
     public boolean isEnabled() {

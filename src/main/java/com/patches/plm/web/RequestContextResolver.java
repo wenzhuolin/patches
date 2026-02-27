@@ -3,6 +3,7 @@ package com.patches.plm.web;
 import com.patches.plm.common.ErrorCode;
 import com.patches.plm.common.exception.BusinessException;
 import com.patches.plm.domain.repository.UserRoleRelationRepository;
+import com.patches.plm.domain.repository.UserRoleScopeRelRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.stereotype.Component;
 
@@ -16,9 +17,12 @@ import java.util.stream.Collectors;
 public class RequestContextResolver {
 
     private final UserRoleRelationRepository userRoleRelationRepository;
+    private final UserRoleScopeRelRepository userRoleScopeRelRepository;
 
-    public RequestContextResolver(UserRoleRelationRepository userRoleRelationRepository) {
+    public RequestContextResolver(UserRoleRelationRepository userRoleRelationRepository,
+                                  UserRoleScopeRelRepository userRoleScopeRelRepository) {
         this.userRoleRelationRepository = userRoleRelationRepository;
+        this.userRoleScopeRelRepository = userRoleScopeRelRepository;
     }
 
     public RequestContext resolve(HttpServletRequest request) {
@@ -26,8 +30,7 @@ public class RequestContextResolver {
         Long userId = parseLongOrThrow(request.getHeader("X-User-Id"), "X-User-Id");
         String rolesHeader = request.getHeader("X-Roles");
         Set<String> roles = rolesHeader == null || rolesHeader.isBlank()
-                ? userRoleRelationRepository.findEnabledRoleCodes(tenantId, userId)
-                    .stream().map(v -> v.toUpperCase(Locale.ROOT)).collect(Collectors.toSet())
+                ? mergeRoles(tenantId, userId)
                 : Arrays.stream(rolesHeader.split(","))
                 .map(String::trim)
                 .filter(v -> !v.isBlank())
@@ -36,6 +39,16 @@ public class RequestContextResolver {
         String requestId = defaultIfBlank(request.getHeader("Idempotency-Key"), UUID.randomUUID().toString());
         String traceId = defaultIfBlank(request.getHeader("X-Trace-Id"), UUID.randomUUID().toString());
         return RequestContext.of(tenantId, userId, roles, requestId, traceId, request.getRemoteAddr(), request.getHeader("User-Agent"));
+    }
+
+    private Set<String> mergeRoles(Long tenantId, Long userId) {
+        Set<String> roles = userRoleRelationRepository.findEnabledRoleCodes(tenantId, userId).stream()
+                .map(v -> v.toUpperCase(Locale.ROOT))
+                .collect(Collectors.toSet());
+        roles.addAll(userRoleScopeRelRepository.findEnabledRoleCodes(tenantId, userId).stream()
+                .map(v -> v.toUpperCase(Locale.ROOT))
+                .toList());
+        return roles;
     }
 
     private Long parseLongOrThrow(String value, String headerName) {

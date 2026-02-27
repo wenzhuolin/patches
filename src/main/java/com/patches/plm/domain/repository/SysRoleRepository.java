@@ -9,5 +9,7 @@ import java.util.Optional;
 public interface SysRoleRepository extends JpaRepository<SysRoleEntity, Long> {
     Optional<SysRoleEntity> findByTenantIdAndRoleCode(Long tenantId, String roleCode);
 
+    Optional<SysRoleEntity> findByTenantIdAndId(Long tenantId, Long id);
+
     List<SysRoleEntity> findByTenantIdOrderByRoleCodeAsc(Long tenantId);
 }

@@ -19,6 +19,8 @@ import com.patches.plm.domain.repository.PatchTransitionLogRepository;
 import com.patches.plm.domain.repository.TestTaskRepository;
 import com.patches.plm.service.dto.KpiCheckResult;
 import com.patches.plm.service.dto.QaCheckResult;
+import com.patches.plm.service.notification.MailEventCode;
+import com.patches.plm.service.notification.MailNotifyCommand;
 import com.patches.plm.service.workflow.PatchStateMachine;
 import com.patches.plm.web.RequestContext;
 import org.springframework.stereotype.Service;
@@ -26,7 +28,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 @Service
 public class PatchService {
@@ -40,12 +45,14 @@ public class PatchService {
     private final TestTaskRepository testTaskRepository;
     private final PatchOperationLogRepository patchOperationLogRepository;
     private final AuditLogService auditLogService;
+    private final MailNotificationService mailNotificationService;
 
     public PatchService(PatchRepository patchRepository, PatchTransitionLogRepository transitionLogRepository,
                         PatchStateMachine patchStateMachine, AccessControlService accessControlService,
                         KpiService kpiService, QaService qaService, TestTaskRepository testTaskRepository,
                         PatchOperationLogRepository patchOperationLogRepository,
-                        AuditLogService auditLogService) {
+                        AuditLogService auditLogService,
+                        MailNotificationService mailNotificationService) {
         this.patchRepository = patchRepository;
         this.transitionLogRepository = transitionLogRepository;
         this.patchStateMachine = patchStateMachine;
@@ -55,6 +62,7 @@ public class PatchService {
         this.testTaskRepository = testTaskRepository;
         this.patchOperationLogRepository = patchOperationLogRepository;
         this.auditLogService = auditLogService;
+        this.mailNotificationService = mailNotificationService;
     }
 
     @Transactional
@@ -80,6 +88,16 @@ public class PatchService {
 
         PatchEntity saved = patchRepository.save(entity);
         auditLogService.log("PATCH", saved.getId(), "CREATE", null, saved, context);
+        mailNotificationService.safeNotify(new MailNotifyCommand(
+                context.tenantId(),
+                MailEventCode.PATCH_CREATED,
+                "PATCH",
+                saved.getId(),
+                context.userId(),
+                saved.getOwnerPmId(),
+                buildMailModel(saved, null, saved.getCurrentState(), "CREATE", null, context),
+                context.requestId() + "-PATCH_CREATED"
+        ));
         return toResponse(saved);
     }
 
@@ -187,6 +205,16 @@ public class PatchService {
                 patchRepository.save(patch);
                 saveTransitionLog(patch, request.action(), fromState, transition.toState(),
                         FlowResult.FAILED, BlockType.KPI, String.join("; ", reasons), context);
+                mailNotificationService.safeNotify(new MailNotifyCommand(
+                        context.tenantId(),
+                        MailEventCode.KPI_GATE_FAILED,
+                        "PATCH",
+                        patch.getId(),
+                        context.userId(),
+                        patch.getOwnerPmId(),
+                        buildMailModel(patch, fromState, transition.toState(), request.action().name(), kpiResult.summary(), context),
+                        context.requestId() + "-KPI_GATE_FAILED"
+                ));
                 throw new BusinessException(ErrorCode.KPI_GATE_FAILED, "KPI未达标，流转被阻断", kpiResult.details());
             }
         }
@@ -209,6 +237,16 @@ public class PatchService {
                 saveTransitionLog(patch, request.action(), fromState, transition.toState(),
                         FlowResult.FAILED, BlockType.QA, String.join("; ", reasons), context);
                 String code = qaResult.rejected() ? ErrorCode.QA_REJECTED : ErrorCode.QA_GATE_FAILED;
+                mailNotificationService.safeNotify(new MailNotifyCommand(
+                        context.tenantId(),
+                        MailEventCode.QA_GATE_BLOCKED,
+                        "PATCH",
+                        patch.getId(),
+                        context.userId(),
+                        patch.getOwnerPmId(),
+                        buildMailModel(patch, fromState, transition.toState(), request.action().name(), String.join("; ", qaResult.reasons()), context),
+                        context.requestId() + "-QA_GATE_BLOCKED"
+                ));
                 throw new BusinessException(code, "QA未通过，流转被阻断", qaResult.reasons());
             }
         }
@@ -225,6 +263,19 @@ public class PatchService {
 
         saveTransitionLog(patch, request.action(), fromState, transition.toState(), FlowResult.SUCCESS, BlockType.NONE, null, context);
         auditLogService.log("PATCH", patch.getId(), request.action().name(), fromState, transition.toState(), context);
+        String eventCode = mapEventCode(request.action());
+        if (eventCode != null) {
+            mailNotificationService.safeNotify(new MailNotifyCommand(
+                    context.tenantId(),
+                    eventCode,
+                    "PATCH",
+                    patch.getId(),
+                    context.userId(),
+                    patch.getOwnerPmId(),
+                    buildMailModel(patch, fromState, transition.toState(), request.action().name(), null, context),
+                    context.requestId() + "-" + eventCode
+            ));
+        }
         return new PatchActionResponse(fromState, transition.toState(), kpiPassed, qaPassed, reasons);
     }
 
@@ -280,5 +331,54 @@ public class PatchService {
         } catch (BusinessException ex) {
             return false;
         }
+    }
+
+    private String mapEventCode(PatchAction action) {
+        return switch (action) {
+            case SUBMIT_REVIEW -> MailEventCode.PATCH_SUBMIT_REVIEW;
+            case APPROVE_REVIEW -> MailEventCode.PATCH_REVIEW_APPROVED;
+            case TRANSFER_TO_TEST -> MailEventCode.PATCH_TRANSFER_TO_TEST;
+            case RELEASE -> MailEventCode.PATCH_RELEASE;
+            case ARCHIVE -> MailEventCode.PATCH_ARCHIVE;
+            default -> null;
+        };
+    }
+
+    private Map<String, Object> buildMailModel(PatchEntity patch,
+                                               PatchState fromState,
+                                               PatchState toState,
+                                               String action,
+                                               String reason,
+                                               RequestContext context) {
+        Map<String, Object> model = new HashMap<>();
+        model.put("patchId", patch.getId());
+        model.put("patchNo", patch.getPatchNo());
+        model.put("title", patch.getTitle());
+        model.put("productLineId", patch.getProductLineId());
+        model.put("fromState", fromState == null ? "" : fromState.name());
+        model.put("toState", toState == null ? patch.getCurrentState().name() : toState.name());
+        model.put("currentState", patch.getCurrentState().name());
+        model.put("action", action);
+        model.put("operatorId", context.userId());
+        model.put("ownerPmId", patch.getOwnerPmId());
+        model.put("traceId", context.traceId());
+        model.put("requestId", context.requestId());
+        model.put("reason", reason == null ? "" : reason);
+        model.put("nextStep", suggestNextStep(toState == null ? patch.getCurrentState() : toState));
+        model.put("mailToken", UUID.randomUUID().toString().substring(0, 8));
+        return model;
+    }
+
+    private String suggestNextStep(PatchState state) {
+        return switch (state) {
+            case DRAFT -> "提交评审";
+            case REVIEWING -> "评审通过或驳回";
+            case REVIEW_PASSED -> "转测";
+            case TESTING -> "测试通过或失败";
+            case TEST_PASSED -> "准备发布";
+            case RELEASE_READY -> "执行发布";
+            case RELEASED -> "归档";
+            case ARCHIVED -> "流程结束";
+        };
     }
 }

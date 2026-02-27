@@ -20,4 +20,12 @@ public interface UserRoleRelationRepository extends JpaRepository<UserRoleRelati
               and r.enabled = true
             """)
     List<String> findEnabledRoleCodes(@Param("tenantId") Long tenantId, @Param("userId") Long userId);
+
+    @Query("""
+            select distinct r.userId from UserRoleRelationEntity r
+            where r.tenantId = :tenantId
+              and r.roleCode in :roleCodes
+              and r.enabled = true
+            """)
+    List<Long> findEnabledUserIdsByRoleCodes(@Param("tenantId") Long tenantId, @Param("roleCodes") List<String> roleCodes);
 }
