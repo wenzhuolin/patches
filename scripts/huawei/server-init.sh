@@ -45,11 +45,15 @@ fi
 echo "[3/4] 开放防火墙端口(若启用防火墙)..."
 if command -v ufw >/dev/null 2>&1; then
   ufw allow 22/tcp || true
+  ufw allow 80/tcp || true
+  ufw allow 443/tcp || true
   ufw allow "${APP_PORT}/tcp" || true
   ufw allow "${DB_PORT}/tcp" || true
 fi
 
 if command -v firewall-cmd >/dev/null 2>&1 && systemctl is-active firewalld >/dev/null 2>&1; then
+  firewall-cmd --permanent --add-port="80/tcp" || true
+  firewall-cmd --permanent --add-port="443/tcp" || true
   firewall-cmd --permanent --add-port="${APP_PORT}/tcp" || true
   firewall-cmd --permanent --add-port="${DB_PORT}/tcp" || true
   firewall-cmd --reload || true

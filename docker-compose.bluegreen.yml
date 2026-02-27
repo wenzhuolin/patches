@@ -1,0 +1,71 @@
+name: patch-lifecycle-bg
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-patches}
+      POSTGRES_USER: ${POSTGRES_USER:-patches}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-patches}
+      TZ: ${TZ:-Asia/Shanghai}
+    command: >
+      postgres
+      -c max_connections=300
+      -c shared_buffers=256MB
+      -c work_mem=4MB
+      -c maintenance_work_mem=64MB
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - pg_data_bg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-patches} -d ${POSTGRES_DB:-patches}"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+  app-blue:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: patch-lifecycle:latest
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-patches}
+      DB_USERNAME: ${POSTGRES_USER:-patches}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-patches}
+      TZ: ${TZ:-Asia/Shanghai}
+      JAVA_OPTS: ${JAVA_OPTS:--Xms256m -Xmx1024m}
+    ports:
+      - "${BLUE_PORT:-18080}:8080"
+    volumes:
+      - app_logs_blue:/app/logs
+
+  app-green:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: patch-lifecycle:latest
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-patches}
+      DB_USERNAME: ${POSTGRES_USER:-patches}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-patches}
+      TZ: ${TZ:-Asia/Shanghai}
+      JAVA_OPTS: ${JAVA_OPTS:--Xms256m -Xmx1024m}
+    ports:
+      - "${GREEN_PORT:-28080}:8080"
+    volumes:
+      - app_logs_green:/app/logs
+
+volumes:
+  pg_data_bg:
+  app_logs_blue:
+  app_logs_green:

@@ -115,6 +115,46 @@ docker compose -f docker-compose.prod.yml logs -f app
 bash scripts/huawei/db-backup.sh
 ```
 
+### 3.3 域名、HTTPS、systemd、自启动与蓝绿发布
+
+1) 安装 Nginx 并配置反向代理（域名替换成你的）
+
+```bash
+sudo bash scripts/huawei/install-reverse-proxy.sh api.yourdomain.com 127.0.0.1:8080
+```
+
+2) 启用 HTTPS（Let's Encrypt）
+
+```bash
+sudo bash scripts/huawei/enable-https.sh api.yourdomain.com your@email.com
+```
+
+3) 安装 systemd 守护（服务器重启后自动拉起）
+
+```bash
+sudo bash scripts/huawei/install-systemd-service.sh /opt/patch-lifecycle prod
+systemctl status patch-lifecycle.service --no-pager
+```
+
+4) 切换到蓝绿发布（零停机回滚）
+
+```bash
+# 先把 Nginx upstream 指向 blue/green 端口之一
+sudo bash scripts/huawei/install-reverse-proxy.sh api.yourdomain.com 127.0.0.1:18080
+
+# 执行蓝绿部署（自动部署到闲置槽位并切流）
+sudo bash scripts/huawei/deploy-bluegreen.sh
+
+# 回滚（切回另一个槽位）
+sudo bash scripts/huawei/rollback-bluegreen.sh
+```
+
+5) 证书续期（手动触发）
+
+```bash
+sudo bash scripts/huawei/renew-cert.sh
+```
+
 ## 4. 关键请求头
 
 所有业务API需要：
