@@ -115,6 +115,13 @@ docker compose -f docker-compose.prod.yml logs -f app
 bash scripts/huawei/db-backup.sh
 ```
 
+7) 预检与上线后验收（建议）
+
+```bash
+bash scripts/huawei/preflight-check.sh api.yourdomain.com
+bash scripts/huawei/post-deploy-smoke.sh http://127.0.0.1:8080
+```
+
 ### 3.3 域名、HTTPS、systemd、自启动与蓝绿发布
 
 1) 安装 Nginx 并配置反向代理（域名替换成你的）
@@ -154,6 +161,20 @@ sudo bash scripts/huawei/rollback-bluegreen.sh
 ```bash
 sudo bash scripts/huawei/renew-cert.sh
 ```
+
+### 3.4 一键首发（包含 init + deploy + nginx + https + systemd）
+
+```bash
+sudo bash scripts/huawei/bootstrap-production.sh \
+  --domain api.yourdomain.com \
+  --email your@email.com \
+  --mode bluegreen \
+  --app-dir /opt/patch-lifecycle
+```
+
+### 3.5 运维 Runbook
+
+- `docs/ops/PROD_RUNBOOK.md`
 
 ## 4. 关键请求头
 

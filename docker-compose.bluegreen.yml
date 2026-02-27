@@ -16,7 +16,7 @@ services:
       -c work_mem=4MB
       -c maintenance_work_mem=64MB
     ports:
-      - "${DB_PORT:-5432}:5432"
+      - "${DB_BIND_IP:-127.0.0.1}:${DB_PORT:-5432}:5432"
     volumes:
       - pg_data_bg:/var/lib/postgresql/data
     healthcheck:
@@ -41,7 +41,7 @@ services:
       TZ: ${TZ:-Asia/Shanghai}
       JAVA_OPTS: ${JAVA_OPTS:--Xms256m -Xmx1024m}
     ports:
-      - "${BLUE_PORT:-18080}:8080"
+      - "${BLUE_BIND_IP:-127.0.0.1}:${BLUE_PORT:-18080}:8080"
     volumes:
       - app_logs_blue:/app/logs
 
@@ -61,7 +61,7 @@ services:
       TZ: ${TZ:-Asia/Shanghai}
       JAVA_OPTS: ${JAVA_OPTS:--Xms256m -Xmx1024m}
     ports:
-      - "${GREEN_PORT:-28080}:8080"
+      - "${GREEN_BIND_IP:-127.0.0.1}:${GREEN_PORT:-28080}:8080"
     volumes:
       - app_logs_green:/app/logs
 
