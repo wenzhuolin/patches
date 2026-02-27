@@ -1,0 +1,17 @@
+[Unit]
+Description=Patch Lifecycle Monitoring Stack
+After=network-online.target docker.service
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=__APP_DIR__
+ExecStart=/usr/bin/env bash -lc "cd __APP_DIR__ && docker compose -f docker-compose.monitoring.yml up -d"
+ExecStop=/usr/bin/env bash -lc "cd __APP_DIR__ && docker compose -f docker-compose.monitoring.yml down"
+TimeoutStartSec=0
+TimeoutStopSec=120
+
+[Install]
+WantedBy=multi-user.target

@@ -87,7 +87,7 @@ sudo APP_PORT=8080 DB_PORT=5432 bash scripts/huawei/server-init.sh
 
 ```bash
 cp .env.example .env
-# 修改 POSTGRES_PASSWORD 等配置
+# 修改 POSTGRES_PASSWORD、GRAFANA_ADMIN_PASSWORD 等配置
 ```
 
 3) 在服务器上部署（仓库已在服务器）
@@ -129,6 +129,9 @@ bash scripts/huawei/post-deploy-smoke.sh http://127.0.0.1:8080
 ```bash
 bash scripts/huawei/install-monitoring.sh
 bash scripts/huawei/monitoring-smoke.sh
+bash scripts/huawei/test-alerting.sh
+bash scripts/huawei/reload-monitoring-config.sh
+sudo bash scripts/huawei/install-monitoring-systemd-service.sh /opt/patch-lifecycle
 ```
 
 ### 3.3 域名、HTTPS、systemd、自启动与蓝绿发布
@@ -178,6 +181,8 @@ sudo bash scripts/huawei/bootstrap-production.sh \
   --domain api.yourdomain.com \
   --email your@email.com \
   --mode bluegreen \
+  --with-monitoring true \
+  --with-maintenance-cron true \
   --app-dir /opt/patch-lifecycle
 ```
 
@@ -200,6 +205,18 @@ sudo bash scripts/huawei/install-maintenance-cron.sh /opt/patch-lifecycle
 
 使用部署工作流前，请在仓库 Secrets 配置：
 - `SSH_PRIVATE_KEY`
+
+### 3.8 运维工具清单（新增）
+
+- 预检：`scripts/huawei/preflight-check.sh`
+- 首发总控：`scripts/huawei/bootstrap-production.sh`
+- 蓝绿发布：`scripts/huawei/deploy-bluegreen.sh`
+- 回滚：`scripts/huawei/rollback-bluegreen.sh`
+- 监控安装：`scripts/huawei/install-monitoring.sh`
+- 监控守护：`scripts/huawei/install-monitoring-systemd-service.sh`
+- 告警自测：`scripts/huawei/test-alerting.sh`
+- 监控热加载：`scripts/huawei/reload-monitoring-config.sh`
+- 维护任务：`scripts/huawei/install-maintenance-cron.sh`
 
 ## 4. 关键请求头
 

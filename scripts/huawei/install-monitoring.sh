@@ -30,7 +30,11 @@ fi
 echo "[1/2] 启动监控栈..."
 compose -f docker-compose.monitoring.yml up -d
 
-echo "[2/2] 状态检查..."
+echo "[2/2] Prometheus 重新加载配置..."
+curl -fsS -X POST "http://127.0.0.1:${PROM_PORT:-9090}/-/reload" >/dev/null || true
+
+echo "[3/3] 状态检查..."
 compose -f docker-compose.monitoring.yml ps
 echo "Prometheus: http://127.0.0.1:${PROM_PORT:-9090}"
+echo "Alertmanager: http://127.0.0.1:${ALERTMANAGER_PORT:-9093}"
 echo "Grafana: http://127.0.0.1:${GRAFANA_PORT:-3000} (默认 admin/admin，请立即修改)"

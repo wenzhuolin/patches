@@ -108,17 +108,24 @@ sudo bash scripts/huawei/install-maintenance-cron.sh /opt/patch-lifecycle
 
 ```bash
 bash scripts/huawei/install-monitoring.sh
+sudo bash scripts/huawei/install-monitoring-systemd-service.sh /opt/patch-lifecycle
 ```
 
 检查：
 
 ```bash
 bash scripts/huawei/monitoring-smoke.sh
+bash scripts/huawei/test-alerting.sh
 ```
 
 访问：
 - Prometheus: `http://127.0.0.1:9090`
+- Alertmanager: `http://127.0.0.1:9093`
 - Grafana: `http://127.0.0.1:3000`
+
+告警接收配置文件：
+- `ops/monitoring/alertmanager/alertmanager.yml`
+- 如需接入企业微信/钉钉/邮件，请在该文件中增加对应 receiver 并重启监控栈
 
 ## 9. 常用排障命令
 
@@ -131,6 +138,7 @@ docker compose -f docker-compose.bluegreen.yml logs -f postgres
 sudo nginx -t
 sudo systemctl status nginx --no-pager
 sudo systemctl status patch-lifecycle.service --no-pager
+sudo systemctl status patch-lifecycle-monitoring.service --no-pager
 ```
 
 ## 10. 安全建议（强烈推荐）

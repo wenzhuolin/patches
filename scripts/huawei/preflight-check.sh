@@ -24,6 +24,22 @@ if [ "${POSTGRES_PASSWORD:-}" = "please_change_me" ] || [ -z "${POSTGRES_PASSWOR
 fi
 ok "数据库密码已配置"
 
+if [ "${GRAFANA_ADMIN_PASSWORD:-}" = "please_change_grafana_password" ]; then
+  warn "GRAFANA_ADMIN_PASSWORD 仍为默认模板值，建议修改"
+fi
+
+if [ "${DB_BIND_IP:-127.0.0.1}" != "127.0.0.1" ]; then
+  warn "DB_BIND_IP 非 127.0.0.1，数据库可能暴露到公网，请确认安全策略"
+else
+  ok "数据库默认仅本机绑定"
+fi
+
+if [ "${APP_BIND_IP:-127.0.0.1}" != "127.0.0.1" ]; then
+  warn "APP_BIND_IP 非 127.0.0.1，建议通过 Nginx 统一入口暴露"
+else
+  ok "应用默认仅本机绑定"
+fi
+
 command -v docker >/dev/null 2>&1 || fail "docker 未安装"
 ok "docker 已安装"
 
