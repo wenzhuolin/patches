@@ -58,7 +58,7 @@ public class MailServerConfigEntity extends AbstractAuditEntity {
     private boolean enabled = true;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "ext_props", columnDefinition = "jsonb")
+    @Column(name = "ext_props")
     private String extProps;
 
     public Long getId() {

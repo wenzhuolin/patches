@@ -1,0 +1,15 @@
+spring:
+  datasource:
+    url: jdbc:sqlite:${SQLITE_PATH:./patches-dev.db}
+    driver-class-name: org.sqlite.JDBC
+    hikari:
+      maximum-pool-size: 1
+      minimum-idle: 1
+      idle-timeout: 0
+      max-lifetime: 0
+  jpa:
+    properties:
+      hibernate:
+        dialect: org.hibernate.community.dialect.SQLiteDialect
+  flyway:
+    locations: classpath:db/migration/sqlite
