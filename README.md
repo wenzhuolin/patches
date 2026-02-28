@@ -111,6 +111,8 @@ bash scripts/start-test-env.sh stop
 ```bash
 export APP_PORT=18080
 export SQLITE_PATH=./.runtime/test-env/data/patches-test.db
+export SERVER_ADDRESS=0.0.0.0
+export PUBLIC_HOST=<你的服务器公网IP或域名>
 export SKIP_BUILD=false
 export START_TIMEOUT_SEC=90
 ```
