@@ -133,6 +133,9 @@ public class KpiService {
         evaluation.setGateType(gateType);
         evaluation.setTriggerAction(triggerAction);
         evaluation.setTraceId(traceId);
+        // kpi_evaluation.result is NOT NULL, prefill before first insert.
+        evaluation.setResult("PASS");
+        evaluation.setSummary("KPI评估中");
         kpiEvaluationRepository.save(evaluation);
 
         for (KpiRuleEntity rule : rules) {
