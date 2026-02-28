@@ -89,6 +89,32 @@ Swagger 地址：
 
 - `http://localhost:8080/swagger-ui.html`
 
+### 3.1.1 测试环境一键启动（SQLite）
+
+```bash
+# 启动（默认端口 18080）
+bash scripts/start-test-env.sh start
+
+# 查看状态/健康
+bash scripts/start-test-env.sh status
+bash scripts/start-test-env.sh health
+
+# 查看日志
+bash scripts/start-test-env.sh logs
+
+# 停止
+bash scripts/start-test-env.sh stop
+```
+
+可选环境变量：
+
+```bash
+export APP_PORT=18080
+export SQLITE_PATH=./.runtime/test-env/data/patches-test.db
+export SKIP_BUILD=false
+export START_TIMEOUT_SEC=90
+```
+
 ### 3.2 华为云 Linux 一键部署（Docker Compose）
 
 适用场景：你有一台带公网IP的 Linux 服务器，想快速部署和联调。
