@@ -17,6 +17,14 @@
 docker login <REGISTRY>
 ```
 
+> 若你在华为云并希望优先走华为加速链路，也可配置：
+>
+> ```env
+> HUAWEI_SWR_MIRROR="https://<你的SWR专属加速地址>.mirror.swr.myhuaweicloud.com"
+> ENABLE_HUAWEI_APT_MIRROR=true
+> HUAWEI_APT_MIRROR=https://repo.huaweicloud.com
+> ```
+
 ## 3. 配置 `.env`（关键）
 
 ```bash

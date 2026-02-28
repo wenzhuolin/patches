@@ -21,6 +21,7 @@ sudo bash scripts/huawei/bootstrap-test-ip.sh
    - `https://mirror.ccs.tencentyun.com`
    - `https://hub-mirror.c.163.com`
 5. 跳过监控和定时维护（更适合测试环境）
+6. 若提供华为云 SWR 专属加速地址，会自动置于 Docker mirrors 第一优先级
 
 ## 安装后访问
 
@@ -34,3 +35,12 @@ sudo bash scripts/huawei/bootstrap-test-ip.sh \
   --app-port 8080 \
   --docker-mirrors "https://docker.m.daocloud.io,https://mirror.ccs.tencentyun.com"
 ```
+
+华为云 SWR 专属加速（推荐）：
+
+```bash
+sudo bash scripts/huawei/bootstrap-test-ip.sh \
+  --swr-mirror "https://<你的SWR专属加速地址>.mirror.swr.myhuaweicloud.com"
+```
+
+> SWR 专属加速地址可在华为云 SWR 控制台“镜像加速器”页面获取。

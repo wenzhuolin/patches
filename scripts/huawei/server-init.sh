@@ -10,6 +10,9 @@ APP_PORT="${APP_PORT:-8080}"
 DB_PORT="${DB_PORT:-5432}"
 ENABLE_DOCKER_MIRROR="${ENABLE_DOCKER_MIRROR:-true}"
 DOCKER_REGISTRY_MIRRORS="${DOCKER_REGISTRY_MIRRORS:-https://docker.m.daocloud.io,https://mirror.ccs.tencentyun.com,https://hub-mirror.c.163.com}"
+HUAWEI_SWR_MIRROR="${HUAWEI_SWR_MIRROR:-}"
+ENABLE_HUAWEI_APT_MIRROR="${ENABLE_HUAWEI_APT_MIRROR:-true}"
+HUAWEI_APT_MIRROR="${HUAWEI_APT_MIRROR:-https://repo.huaweicloud.com}"
 
 echo "[1/4] 安装 Docker..."
 if ! command -v docker >/dev/null 2>&1; then
@@ -31,7 +34,7 @@ configure_docker_mirror() {
   local daemon_file="/etc/docker/daemon.json"
   local tmp_file
   tmp_file="$(mktemp)"
-  python3 - "$daemon_file" "$DOCKER_REGISTRY_MIRRORS" "$tmp_file" <<'PY'
+  python3 - "$daemon_file" "$DOCKER_REGISTRY_MIRRORS" "$HUAWEI_SWR_MIRROR" "$tmp_file" <<'PY'
 import json
 import os
 import sys
@@ -39,8 +42,11 @@ from pathlib import Path
 
 daemon_path = Path(sys.argv[1])
 mirrors_raw = sys.argv[2]
-tmp_path = Path(sys.argv[3])
+hw_mirror = sys.argv[3].strip()
+tmp_path = Path(sys.argv[4])
 mirrors = [m.strip() for m in mirrors_raw.split(",") if m.strip()]
+if hw_mirror:
+    mirrors = [hw_mirror] + mirrors
 
 data = {}
 if daemon_path.exists():
@@ -64,7 +70,44 @@ PY
   install -m 0644 "${tmp_file}" "${daemon_file}"
   rm -f "${tmp_file}"
   systemctl restart docker
-  echo "[Docker镜像加速] 已配置: ${DOCKER_REGISTRY_MIRRORS}"
+  if [ -n "${HUAWEI_SWR_MIRROR}" ]; then
+    echo "[Docker镜像加速] 已优先配置华为SWR镜像加速: ${HUAWEI_SWR_MIRROR}"
+  fi
+  echo "[Docker镜像加速] 当前 mirrors: ${DOCKER_REGISTRY_MIRRORS}"
+}
+
+configure_huawei_apt_mirror() {
+  if [ "${ENABLE_HUAWEI_APT_MIRROR}" != "true" ]; then
+    echo "[APT镜像源] 跳过（ENABLE_HUAWEI_APT_MIRROR=${ENABLE_HUAWEI_APT_MIRROR}）"
+    return 0
+  fi
+  if ! command -v apt-get >/dev/null 2>&1; then
+    return 0
+  fi
+  if [ ! -f /etc/os-release ]; then
+    return 0
+  fi
+  # shellcheck disable=SC1091
+  . /etc/os-release
+  if [ "${ID:-}" != "ubuntu" ]; then
+    return 0
+  fi
+  if [ -z "${VERSION_CODENAME:-}" ]; then
+    return 0
+  fi
+  local mirror="${HUAWEI_APT_MIRROR%/}"
+  local codename="${VERSION_CODENAME}"
+  local backup="/etc/apt/sources.list.bak.before-huawei-mirror"
+  if [ -f /etc/apt/sources.list ] && [ ! -f "${backup}" ]; then
+    cp /etc/apt/sources.list "${backup}"
+  fi
+  cat > /etc/apt/sources.list <<EOF
+deb ${mirror}/ubuntu/ ${codename} main restricted universe multiverse
+deb ${mirror}/ubuntu/ ${codename}-updates main restricted universe multiverse
+deb ${mirror}/ubuntu/ ${codename}-backports main restricted universe multiverse
+deb ${mirror}/ubuntu/ ${codename}-security main restricted universe multiverse
+EOF
+  echo "[APT镜像源] 已切换到: ${mirror}/ubuntu/ (${codename})"
 }
 
 if ! docker compose version >/dev/null 2>&1; then
@@ -83,6 +126,7 @@ if [ -n "${SUDO_USER:-}" ] && [ "${SUDO_USER}" != "root" ]; then
 fi
 
 echo "[2/4] 安装基础工具..."
+configure_huawei_apt_mirror
 if command -v apt-get >/dev/null 2>&1; then
   apt-get update -y
   apt-get install -y curl git tar python3

@@ -12,6 +12,9 @@ cd "${ROOT_DIR}"
 APP_DIR="${ROOT_DIR}"
 APP_PORT="${APP_PORT:-8080}"
 DOCKER_REGISTRY_MIRRORS="${DOCKER_REGISTRY_MIRRORS:-https://docker.m.daocloud.io,https://mirror.ccs.tencentyun.com,https://hub-mirror.c.163.com}"
+HUAWEI_SWR_MIRROR="${HUAWEI_SWR_MIRROR:-}"
+ENABLE_HUAWEI_APT_MIRROR="${ENABLE_HUAWEI_APT_MIRROR:-true}"
+HUAWEI_APT_MIRROR="${HUAWEI_APT_MIRROR:-https://repo.huaweicloud.com}"
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -27,9 +30,17 @@ while [ "$#" -gt 0 ]; do
       DOCKER_REGISTRY_MIRRORS="${2:-${DOCKER_REGISTRY_MIRRORS}}"
       shift 2
       ;;
+    --swr-mirror)
+      HUAWEI_SWR_MIRROR="${2:-${HUAWEI_SWR_MIRROR}}"
+      shift 2
+      ;;
+    --disable-huawei-apt-mirror)
+      ENABLE_HUAWEI_APT_MIRROR="false"
+      shift 1
+      ;;
     *)
       echo "未知参数: $1"
-      echo "用法: sudo bash scripts/huawei/bootstrap-test-ip.sh [--app-dir /opt/patch-lifecycle] [--app-port 8080] [--docker-mirrors ...]"
+      echo "用法: sudo bash scripts/huawei/bootstrap-test-ip.sh [--app-dir /opt/patch-lifecycle] [--app-port 8080] [--docker-mirrors ...] [--swr-mirror ...] [--disable-huawei-apt-mirror]"
       exit 1
       ;;
   esac
@@ -63,7 +74,13 @@ set_env_value APP_PORT "${APP_PORT}"
 set_env_value APP_BUILD_ENABLED "true"
 set_env_value APP_PULL_IMAGE "false"
 set_env_value COMPOSE_BUILD_PULL "false"
+if [ -n "${HUAWEI_SWR_MIRROR}" ]; then
+  set_env_value HUAWEI_SWR_MIRROR "\"${HUAWEI_SWR_MIRROR}\""
+  DOCKER_REGISTRY_MIRRORS="${HUAWEI_SWR_MIRROR},${DOCKER_REGISTRY_MIRRORS}"
+fi
 set_env_value DOCKER_REGISTRY_MIRRORS "\"${DOCKER_REGISTRY_MIRRORS}\""
+set_env_value ENABLE_HUAWEI_APT_MIRROR "${ENABLE_HUAWEI_APT_MIRROR}"
+set_env_value HUAWEI_APT_MIRROR "${HUAWEI_APT_MIRROR}"
 
 if grep -q '^POSTGRES_PASSWORD=please_change_me' .env || grep -q '^POSTGRES_PASSWORD=$' .env; then
   set_env_value POSTGRES_PASSWORD "$(random_secret)"
@@ -73,6 +90,11 @@ if grep -q '^GRAFANA_ADMIN_PASSWORD=please_change_grafana_password' .env || grep
 fi
 
 export DOCKER_REGISTRY_MIRRORS
+if [ -n "${HUAWEI_SWR_MIRROR}" ]; then
+  export HUAWEI_SWR_MIRROR
+fi
+export ENABLE_HUAWEI_APT_MIRROR
+export HUAWEI_APT_MIRROR
 
 bash scripts/huawei/bootstrap-production.sh \
   --mode prod \
