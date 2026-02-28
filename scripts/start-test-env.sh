@@ -183,6 +183,7 @@ start_app() {
   echo "PID: $(cat "${PID_FILE}")"
   echo "Log: ${LOG_FILE}"
   echo "SQLite DB: ${DB_FILE}"
+  echo "Portal:         http://${shown_host}:${APP_PORT}/"
   echo "Local Swagger:  http://127.0.0.1:${APP_PORT}/swagger-ui.html"
   echo "Remote Swagger: http://${shown_host}:${APP_PORT}/swagger-ui.html"
   echo "Remote Health:  http://${shown_host}:${APP_PORT}/actuator/health"

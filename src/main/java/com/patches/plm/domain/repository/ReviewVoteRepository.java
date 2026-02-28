@@ -9,4 +9,6 @@ public interface ReviewVoteRepository extends JpaRepository<ReviewVoteEntity, Lo
     long countBySessionId(Long sessionId);
 
     long countBySessionIdAndVote(Long sessionId, String vote);
+
+    java.util.List<ReviewVoteEntity> findBySessionIdOrderByVotedAtDesc(Long sessionId);
 }
