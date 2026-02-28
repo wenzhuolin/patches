@@ -52,7 +52,34 @@ done
 if [ ! -f ".env" ]; then
   cp .env.example .env
   echo "已创建 .env，请先修改 POSTGRES_PASSWORD 后重新执行。"
+  echo "如需免配置测试环境一键安装，可执行: sudo bash scripts/huawei/bootstrap-test-ip.sh"
   exit 1
+fi
+
+read_env_value() {
+  local key="$1"
+  local value
+  value="$(awk -v k="${key}" '
+    /^[[:space:]]*#/ { next }
+    $0 ~ "^[[:space:]]*"k"[[:space:]]*=" {
+      sub(/^[^=]*=/, "", $0)
+      print $0
+      exit
+    }
+  ' .env)"
+  value="${value#"${value%%[![:space:]]*}"}"
+  value="${value%"${value##*[![:space:]]}"}"
+  if [[ "${value}" =~ ^\".*\"$ ]]; then
+    value="${value:1:${#value}-2}"
+  elif [[ "${value}" =~ ^\'.*\'$ ]]; then
+    value="${value:1:${#value}-2}"
+  fi
+  printf '%s' "${value}"
+}
+
+ENV_DOCKER_MIRRORS="$(read_env_value DOCKER_REGISTRY_MIRRORS)"
+if [ -n "${ENV_DOCKER_MIRRORS}" ]; then
+  export DOCKER_REGISTRY_MIRRORS="${ENV_DOCKER_MIRRORS}"
 fi
 
 echo "[1/8] 服务器初始化"
