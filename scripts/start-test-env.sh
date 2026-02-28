@@ -29,6 +29,52 @@ Environment variables:
 USAGE
 }
 
+print_java_fix_hint() {
+  cat <<'HINT'
+当前环境不满足编译要求：项目需要 JDK 21（maven-compiler-plugin --release 21）。
+
+请执行以下步骤：
+  1) 安装 JDK 21
+     Ubuntu:
+       sudo apt update && sudo apt install -y openjdk-21-jdk
+     CentOS/RHEL:
+       sudo dnf install -y java-21-openjdk-devel
+
+  2) 设置 JAVA_HOME（示例）
+       export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
+       export PATH="$JAVA_HOME/bin:$PATH"
+
+  3) 验证 Maven 实际使用的 Java 版本
+       java -version
+       ./mvnw -v
+
+确认 ./mvnw -v 显示 Java 21 后，再执行：
+  bash scripts/start-test-env.sh start
+HINT
+}
+
+check_java21() {
+  if ! command -v java >/dev/null 2>&1; then
+    echo "未找到 java 命令。"
+    print_java_fix_hint
+    exit 1
+  fi
+
+  if ! command -v javac >/dev/null 2>&1; then
+    echo "未找到 javac 命令。当前可能是 JRE 而非 JDK。"
+    print_java_fix_hint
+    exit 1
+  fi
+
+  if ! javac --release 21 -version >/dev/null 2>&1; then
+    echo "当前 JDK 不支持 --release 21。"
+    echo "java version: $(java -version 2>&1 | sed -n '1p')"
+    echo "javac version: $(javac -version 2>&1 | sed -n '1p')"
+    print_java_fix_hint
+    exit 1
+  fi
+}
+
 is_running() {
   if [[ ! -f "${PID_FILE}" ]]; then
     return 1
@@ -78,6 +124,8 @@ start_app() {
   fi
 
   mkdir -p "${RUNTIME_DIR}" "${DATA_DIR}"
+
+  check_java21
 
   if [[ "${SKIP_BUILD}" != "true" ]]; then
     echo "[1/3] Building application jar..."
