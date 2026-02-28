@@ -6,9 +6,9 @@ create table if not exists sys_role (
     role_level varchar(16) not null default 'GLOBAL',
     scope_ref_id bigint,
     enabled boolean not null default true,
-    created_at text not null default current_timestamp,
+    created_at bigint not null default (unixepoch('now') * 1000),
     created_by bigint,
-    updated_at text not null default current_timestamp,
+    updated_at bigint not null default (unixepoch('now') * 1000),
     updated_by bigint,
     is_deleted boolean not null default false,
     constraint uk_sys_role unique (tenant_id, role_code)
@@ -20,9 +20,9 @@ create table if not exists role_action_permission (
     role_code varchar(64) not null,
     action varchar(64) not null,
     enabled boolean not null default true,
-    created_at text not null default current_timestamp,
+    created_at bigint not null default (unixepoch('now') * 1000),
     created_by bigint,
-    updated_at text not null default current_timestamp,
+    updated_at bigint not null default (unixepoch('now') * 1000),
     updated_by bigint,
     is_deleted boolean not null default false,
     constraint uk_role_action unique (tenant_id, role_code, action)
@@ -37,9 +37,9 @@ create table if not exists user_data_scope (
     scope_type varchar(32) not null,
     scope_value varchar(128),
     enabled boolean not null default true,
-    created_at text not null default current_timestamp,
+    created_at bigint not null default (unixepoch('now') * 1000),
     created_by bigint,
-    updated_at text not null default current_timestamp,
+    updated_at bigint not null default (unixepoch('now') * 1000),
     updated_by bigint,
     is_deleted boolean not null default false,
     constraint uk_user_scope unique (tenant_id, user_id, scope_type, scope_value)
@@ -55,9 +55,9 @@ create table if not exists integration_connector (
     base_url varchar(255),
     auth_config text,
     enabled boolean not null default true,
-    created_at text not null default current_timestamp,
+    created_at bigint not null default (unixepoch('now') * 1000),
     created_by bigint,
-    updated_at text not null default current_timestamp,
+    updated_at bigint not null default (unixepoch('now') * 1000),
     updated_by bigint,
     is_deleted boolean not null default false
 );

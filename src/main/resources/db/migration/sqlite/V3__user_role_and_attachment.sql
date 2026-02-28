@@ -6,9 +6,9 @@ create table if not exists sys_user (
     email varchar(128),
     mobile varchar(32),
     status varchar(32) not null default 'ACTIVE',
-    created_at text not null default current_timestamp,
+    created_at bigint not null default (unixepoch('now') * 1000),
     created_by bigint,
-    updated_at text not null default current_timestamp,
+    updated_at bigint not null default (unixepoch('now') * 1000),
     updated_by bigint,
     is_deleted boolean not null default false,
     constraint uk_sys_user unique (tenant_id, username)
@@ -22,9 +22,9 @@ create table if not exists user_role_relation (
     user_id bigint not null references sys_user(id),
     role_code varchar(64) not null,
     enabled boolean not null default true,
-    created_at text not null default current_timestamp,
+    created_at bigint not null default (unixepoch('now') * 1000),
     created_by bigint,
-    updated_at text not null default current_timestamp,
+    updated_at bigint not null default (unixepoch('now') * 1000),
     updated_by bigint,
     is_deleted boolean not null default false,
     constraint uk_user_role_relation unique (tenant_id, user_id, role_code)
@@ -43,7 +43,7 @@ create table if not exists patch_attachment (
     file_size bigint,
     uploader_id bigint not null,
     scan_status varchar(16) not null default 'PENDING',
-    created_at text not null default current_timestamp
+    created_at bigint not null default (unixepoch('now') * 1000)
 );
 
 create index if not exists idx_patch_attachment on patch_attachment (tenant_id, patch_id, stage, created_at);

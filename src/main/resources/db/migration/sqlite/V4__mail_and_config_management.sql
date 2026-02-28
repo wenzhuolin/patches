@@ -20,9 +20,9 @@ create table if not exists mail_server_config (
     is_default boolean not null default false,
     enabled boolean not null default true,
     ext_props json,
-    created_at text not null default current_timestamp,
+    created_at bigint not null default (unixepoch('now') * 1000),
     created_by bigint,
-    updated_at text not null default current_timestamp,
+    updated_at bigint not null default (unixepoch('now') * 1000),
     updated_by bigint,
     is_deleted boolean not null default false,
     constraint uk_mail_server_config unique (tenant_id, config_name)
@@ -42,9 +42,9 @@ create table if not exists mail_template (
     version int not null default 1,
     enabled boolean not null default true,
     ext_props json,
-    created_at text not null default current_timestamp,
+    created_at bigint not null default (unixepoch('now') * 1000),
     created_by bigint,
-    updated_at text not null default current_timestamp,
+    updated_at bigint not null default (unixepoch('now') * 1000),
     updated_by bigint,
     is_deleted boolean not null default false,
     constraint uk_mail_template unique (tenant_id, template_code, version)
@@ -62,9 +62,9 @@ create table if not exists mail_event_policy (
     include_owner boolean not null default true,
     include_operator boolean not null default false,
     enabled boolean not null default true,
-    created_at text not null default current_timestamp,
+    created_at bigint not null default (unixepoch('now') * 1000),
     created_by bigint,
-    updated_at text not null default current_timestamp,
+    updated_at bigint not null default (unixepoch('now') * 1000),
     updated_by bigint,
     is_deleted boolean not null default false,
     constraint uk_mail_event_policy unique (tenant_id, event_code)
@@ -88,12 +88,12 @@ create table if not exists mail_send_log (
     provider_msg_id varchar(128),
     retry_count int not null default 0,
     max_retry int not null default 5,
-    next_retry_at text,
+    next_retry_at bigint,
     error_code varchar(64),
     error_message text,
     idempotency_key varchar(128),
-    created_at text not null default current_timestamp,
-    sent_at text
+    created_at bigint not null default (unixepoch('now') * 1000),
+    sent_at bigint
 );
 
 create index if not exists idx_mail_send_log_status on mail_send_log (tenant_id, status, created_at);
@@ -105,11 +105,11 @@ create table if not exists mail_send_task (
     tenant_id bigint not null,
     log_id bigint not null references mail_send_log(id) on delete cascade,
     task_status varchar(16) not null default 'PENDING',
-    available_at text not null default current_timestamp,
+    available_at bigint not null default (unixepoch('now') * 1000),
     locked_by varchar(64),
-    locked_at text,
-    created_at text not null default current_timestamp,
-    updated_at text not null default current_timestamp
+    locked_at bigint,
+    created_at bigint not null default (unixepoch('now') * 1000),
+    updated_at bigint not null default (unixepoch('now') * 1000)
 );
 
 create index if not exists idx_mail_send_task_available on mail_send_task (task_status, available_at);
@@ -127,9 +127,9 @@ create table if not exists delivery_scenario (
     description text,
     status varchar(32) not null default 'ACTIVE',
     ext_props json,
-    created_at text not null default current_timestamp,
+    created_at bigint not null default (unixepoch('now') * 1000),
     created_by bigint,
-    updated_at text not null default current_timestamp,
+    updated_at bigint not null default (unixepoch('now') * 1000),
     updated_by bigint,
     is_deleted boolean not null default false,
     constraint uk_delivery_scenario unique (tenant_id, scenario_code)
@@ -146,9 +146,9 @@ create table if not exists product (
     owner_user_id bigint,
     status varchar(32) not null default 'ACTIVE',
     ext_props json,
-    created_at text not null default current_timestamp,
+    created_at bigint not null default (unixepoch('now') * 1000),
     created_by bigint,
-    updated_at text not null default current_timestamp,
+    updated_at bigint not null default (unixepoch('now') * 1000),
     updated_by bigint,
     is_deleted boolean not null default false,
     constraint uk_product unique (tenant_id, product_code)
@@ -162,9 +162,9 @@ create table if not exists scenario_product_rel (
     scenario_id bigint not null references delivery_scenario(id) on delete cascade,
     product_id bigint not null references product(id) on delete cascade,
     status varchar(32) not null default 'ACTIVE',
-    created_at text not null default current_timestamp,
+    created_at bigint not null default (unixepoch('now') * 1000),
     created_by bigint,
-    updated_at text not null default current_timestamp,
+    updated_at bigint not null default (unixepoch('now') * 1000),
     updated_by bigint,
     is_deleted boolean not null default false,
     constraint uk_scenario_product_rel unique (tenant_id, scenario_id, product_id)
@@ -186,9 +186,9 @@ create table if not exists permission_def (
     action varchar(64),
     parent_id bigint,
     enabled boolean not null default true,
-    created_at text not null default current_timestamp,
+    created_at bigint not null default (unixepoch('now') * 1000),
     created_by bigint,
-    updated_at text not null default current_timestamp,
+    updated_at bigint not null default (unixepoch('now') * 1000),
     updated_by bigint,
     is_deleted boolean not null default false,
     constraint uk_permission_def unique (tenant_id, perm_code)
@@ -202,9 +202,9 @@ create table if not exists role_permission_rel (
     role_id bigint not null references sys_role(id) on delete cascade,
     permission_id bigint not null references permission_def(id) on delete cascade,
     grant_type varchar(16) not null default 'ALLOW',
-    created_at text not null default current_timestamp,
+    created_at bigint not null default (unixepoch('now') * 1000),
     created_by bigint,
-    updated_at text not null default current_timestamp,
+    updated_at bigint not null default (unixepoch('now') * 1000),
     updated_by bigint,
     is_deleted boolean not null default false,
     constraint uk_role_permission_rel unique (tenant_id, role_id, permission_id)
@@ -222,9 +222,9 @@ create table if not exists user_role_scope_rel (
     scenario_id bigint references delivery_scenario(id) on delete cascade,
     product_id bigint references product(id) on delete cascade,
     status varchar(32) not null default 'ACTIVE',
-    created_at text not null default current_timestamp,
+    created_at bigint not null default (unixepoch('now') * 1000),
     created_by bigint,
-    updated_at text not null default current_timestamp,
+    updated_at bigint not null default (unixepoch('now') * 1000),
     updated_by bigint,
     is_deleted boolean not null default false,
     constraint uk_user_role_scope_rel unique (tenant_id, user_id, role_id, scope_level, scenario_id, product_id)
@@ -240,9 +240,9 @@ create table if not exists data_scope_policy (
     resource_type varchar(32) not null,
     scope_expr json not null,
     enabled boolean not null default true,
-    created_at text not null default current_timestamp,
+    created_at bigint not null default (unixepoch('now') * 1000),
     created_by bigint,
-    updated_at text not null default current_timestamp,
+    updated_at bigint not null default (unixepoch('now') * 1000),
     updated_by bigint,
     is_deleted boolean not null default false
 );
@@ -261,7 +261,7 @@ create table if not exists config_change_log (
     trace_id varchar(64),
     ip varchar(64),
     user_agent varchar(255),
-    created_at text not null default current_timestamp
+    created_at bigint not null default (unixepoch('now') * 1000)
 );
 
 create index if not exists idx_config_change_log on config_change_log (tenant_id, config_type, config_id, created_at);

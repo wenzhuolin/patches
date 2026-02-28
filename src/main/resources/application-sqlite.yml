@@ -8,8 +8,12 @@ spring:
       idle-timeout: 0
       max-lifetime: 0
   jpa:
+    hibernate:
+      ddl-auto: none
     properties:
       hibernate:
         dialect: org.hibernate.community.dialect.SQLiteDialect
+        timezone:
+          default_storage: NORMALIZE_UTC
   flyway:
     locations: classpath:db/migration/sqlite

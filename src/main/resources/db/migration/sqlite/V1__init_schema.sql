@@ -14,9 +14,9 @@ create table if not exists patch (
     kpi_blocked boolean not null default false,
     qa_blocked boolean not null default false,
     version bigint not null default 0,
-    created_at text not null default current_timestamp,
+    created_at bigint not null default (unixepoch('now') * 1000),
     created_by bigint,
-    updated_at text not null default current_timestamp,
+    updated_at bigint not null default (unixepoch('now') * 1000),
     updated_by bigint,
     is_deleted boolean not null default false,
     constraint uk_patch_tenant_no unique (tenant_id, patch_no)
@@ -37,7 +37,7 @@ create table if not exists patch_transition_log (
     block_reason text,
     operator_id bigint not null,
     request_id varchar(128) not null,
-    created_at text not null default current_timestamp,
+    created_at bigint not null default (unixepoch('now') * 1000),
     constraint uk_transition_request unique (patch_id, request_id)
 );
 
@@ -55,7 +55,7 @@ create table if not exists patch_operation_log (
     trace_id varchar(64),
     ip varchar(64),
     user_agent varchar(255),
-    created_at text not null default current_timestamp
+    created_at bigint not null default (unixepoch('now') * 1000)
 );
 
 create index if not exists idx_operation_biz on patch_operation_log (tenant_id, biz_type, biz_id, created_at);
@@ -75,12 +75,12 @@ create table if not exists kpi_rule (
     priority int not null default 100,
     scope_type varchar(32) not null default 'GLOBAL',
     scope_value varchar(64),
-    effective_from text,
-    effective_to text,
+    effective_from bigint,
+    effective_to bigint,
     enabled boolean not null default true,
-    created_at text not null default current_timestamp,
+    created_at bigint not null default (unixepoch('now') * 1000),
     created_by bigint,
-    updated_at text not null default current_timestamp,
+    updated_at bigint not null default (unixepoch('now') * 1000),
     updated_by bigint,
     is_deleted boolean not null default false,
     constraint uk_kpi_rule unique (tenant_id, rule_code)
@@ -95,8 +95,8 @@ create table if not exists kpi_metric_value (
     metric_key varchar(64) not null,
     metric_value real not null,
     source_type varchar(32) not null,
-    collected_at text not null,
-    created_at text not null default current_timestamp
+    collected_at bigint not null,
+    created_at bigint not null default (unixepoch('now') * 1000)
 );
 
 create index if not exists idx_kpi_metric_patch on kpi_metric_value (tenant_id, patch_id, metric_key, collected_at);
@@ -110,7 +110,7 @@ create table if not exists kpi_evaluation (
     trigger_action varchar(64) not null,
     result varchar(16) not null,
     summary text,
-    evaluated_at text not null default current_timestamp,
+    evaluated_at bigint not null default (unixepoch('now') * 1000),
     trace_id varchar(64)
 );
 
@@ -138,11 +138,11 @@ create table if not exists qa_policy (
     scope_type varchar(32) not null default 'GLOBAL',
     scope_value varchar(64),
     enabled boolean not null default true,
-    effective_from text,
-    effective_to text,
-    created_at text not null default current_timestamp,
+    effective_from bigint,
+    effective_to bigint,
+    created_at bigint not null default (unixepoch('now') * 1000),
     created_by bigint,
-    updated_at text not null default current_timestamp,
+    updated_at bigint not null default (unixepoch('now') * 1000),
     updated_by bigint,
     is_deleted boolean not null default false
 );
@@ -160,10 +160,10 @@ create table if not exists qa_task (
     sequence_no int not null,
     status varchar(16) not null,
     decision_comment text,
-    decided_at text,
-    created_at text not null default current_timestamp,
+    decided_at bigint,
+    created_at bigint not null default (unixepoch('now') * 1000),
     created_by bigint,
-    updated_at text not null default current_timestamp,
+    updated_at bigint not null default (unixepoch('now') * 1000),
     updated_by bigint,
     is_deleted boolean not null default false
 );
@@ -177,7 +177,7 @@ create table if not exists qa_decision_log (
     decision varchar(16) not null,
     comment text,
     operator_id bigint not null,
-    created_at text not null default current_timestamp
+    created_at bigint not null default (unixepoch('now') * 1000)
 );
 
 create table if not exists test_task (
@@ -191,11 +191,11 @@ create table if not exists test_task (
     env_ready boolean,
     case_execution_rate real,
     defect_density real,
-    started_at text,
-    completed_at text,
-    created_at text not null default current_timestamp,
+    started_at bigint,
+    completed_at bigint,
+    created_at bigint not null default (unixepoch('now') * 1000),
     created_by bigint,
-    updated_at text not null default current_timestamp,
+    updated_at bigint not null default (unixepoch('now') * 1000),
     updated_by bigint,
     is_deleted boolean not null default false,
     constraint uk_test_task unique (tenant_id, task_no)
@@ -212,9 +212,9 @@ create table if not exists review_session (
     approve_rate_required real,
     status varchar(16) not null,
     conclusion varchar(16),
-    created_at text not null default current_timestamp,
+    created_at bigint not null default (unixepoch('now') * 1000),
     created_by bigint,
-    updated_at text not null default current_timestamp,
+    updated_at bigint not null default (unixepoch('now') * 1000),
     updated_by bigint,
     is_deleted boolean not null default false
 );
@@ -225,6 +225,6 @@ create table if not exists review_vote (
     voter_id bigint not null,
     vote varchar(16) not null,
     comment text,
-    voted_at text not null default current_timestamp,
+    voted_at bigint not null default (unixepoch('now') * 1000),
     constraint uk_review_vote unique (session_id, voter_id)
 );
