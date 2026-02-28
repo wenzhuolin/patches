@@ -1,4 +1,5 @@
 ARG BUILDER_IMAGE=eclipse-temurin:21-jdk
+ARG RUNTIME_IMAGE=eclipse-temurin:21-jre
 FROM ${BUILDER_IMAGE} AS build
 WORKDIR /app
 
@@ -7,7 +8,6 @@ COPY src ./src
 
 RUN chmod +x ./mvnw && ./mvnw -DskipTests clean package
 
-ARG RUNTIME_IMAGE=eclipse-temurin:21-jre
 FROM ${RUNTIME_IMAGE}
 WORKDIR /app
 
