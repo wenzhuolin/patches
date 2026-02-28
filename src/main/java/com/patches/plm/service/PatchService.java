@@ -165,7 +165,7 @@ public class PatchService {
         )).toList();
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = BusinessException.class)
     public PatchActionResponse executeAction(Long patchId, PatchActionRequest request, RequestContext context) {
         PatchEntity patch = patchRepository.lockByIdAndTenantId(patchId, context.tenantId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "补丁不存在"));
