@@ -1,6 +1,5 @@
-# syntax=docker/dockerfile:1.7
-
-FROM eclipse-temurin:21-jdk AS build
+ARG BUILDER_IMAGE=eclipse-temurin:21-jdk
+FROM ${BUILDER_IMAGE} AS build
 WORKDIR /app
 
 COPY pom.xml mvnw ./
@@ -8,7 +7,8 @@ COPY src ./src
 
 RUN chmod +x ./mvnw && ./mvnw -DskipTests clean package
 
-FROM eclipse-temurin:21-jre
+ARG RUNTIME_IMAGE=eclipse-temurin:21-jre
+FROM ${RUNTIME_IMAGE}
 WORKDIR /app
 
 ENV TZ=Asia/Shanghai

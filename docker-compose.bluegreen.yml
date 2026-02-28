@@ -2,7 +2,7 @@ name: patch-lifecycle-bg
 
 services:
   postgres:
-    image: postgres:16-alpine
+    image: ${POSTGRES_IMAGE:-postgres:16-alpine}
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-patches}
@@ -31,7 +31,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: patch-lifecycle:latest
+      args:
+        BUILDER_IMAGE: ${JAVA_BUILDER_IMAGE:-eclipse-temurin:21-jdk}
+        RUNTIME_IMAGE: ${JAVA_RUNTIME_IMAGE:-eclipse-temurin:21-jre}
+    image: ${APP_IMAGE:-patch-lifecycle:latest}
     restart: unless-stopped
     depends_on:
       postgres:
@@ -53,7 +56,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: patch-lifecycle:latest
+      args:
+        BUILDER_IMAGE: ${JAVA_BUILDER_IMAGE:-eclipse-temurin:21-jdk}
+        RUNTIME_IMAGE: ${JAVA_RUNTIME_IMAGE:-eclipse-temurin:21-jre}
+    image: ${APP_IMAGE:-patch-lifecycle:latest}
     restart: unless-stopped
     depends_on:
       postgres:

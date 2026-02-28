@@ -23,12 +23,41 @@ if [ ! -f ".env" ]; then
   exit 1
 fi
 
-set -a
-source .env
-set +a
+read_env_value() {
+  local key="$1"
+  local value
+  value="$(awk -v k="${key}" '
+    /^[[:space:]]*#/ { next }
+    $0 ~ "^[[:space:]]*"k"[[:space:]]*=" {
+      sub(/^[^=]*=/, "", $0)
+      print $0
+      exit
+    }
+  ' .env)"
+  value="${value#"${value%%[![:space:]]*}"}"
+  value="${value%"${value##*[![:space:]]}"}"
+  if [[ "${value}" =~ ^\".*\"$ ]]; then
+    value="${value:1:${#value}-2}"
+  elif [[ "${value}" =~ ^\'.*\'$ ]]; then
+    value="${value:1:${#value}-2}"
+  fi
+  printf '%s' "${value}"
+}
+
+BLUE_PORT="$(read_env_value BLUE_PORT)"
+GREEN_PORT="$(read_env_value GREEN_PORT)"
+APP_BUILD_ENABLED="$(read_env_value APP_BUILD_ENABLED)"
+APP_PULL_IMAGE="$(read_env_value APP_PULL_IMAGE)"
+COMPOSE_BUILD_PULL="$(read_env_value COMPOSE_BUILD_PULL)"
+STOP_OLD="$(read_env_value STOP_OLD)"
 
 BLUE_PORT="${BLUE_PORT:-18080}"
 GREEN_PORT="${GREEN_PORT:-28080}"
+APP_BUILD_ENABLED="${APP_BUILD_ENABLED:-true}"
+APP_PULL_IMAGE="${APP_PULL_IMAGE:-false}"
+COMPOSE_BUILD_PULL="${COMPOSE_BUILD_PULL:-false}"
+STOP_OLD="${STOP_OLD:-false}"
+
 UPSTREAM_INC="/etc/nginx/conf.d/patch-lifecycle-upstream.inc"
 ACTIVE_SLOT="none"
 
@@ -55,10 +84,31 @@ else
 fi
 
 echo "当前 active=${ACTIVE_SLOT}, 目标部署 slot=${TARGET_SLOT}"
-echo "[1/4] 拉起数据库和目标槽位..."
-compose -f docker-compose.bluegreen.yml up -d --build postgres "app-${TARGET_SLOT}"
+echo "[1/5] 拉起数据库..."
+compose -f docker-compose.bluegreen.yml up -d postgres
 
-echo "[2/4] 等待目标槽位健康..."
+if [ "${APP_PULL_IMAGE}" = "true" ]; then
+  echo "[2/5] 拉取目标槽位镜像..."
+  compose -f docker-compose.bluegreen.yml pull "app-${TARGET_SLOT}"
+elif [ "${APP_BUILD_ENABLED}" = "true" ]; then
+  echo "[2/5] 构建目标槽位镜像..."
+  if [ "${COMPOSE_BUILD_PULL}" = "true" ]; then
+    compose -f docker-compose.bluegreen.yml build --pull "app-${TARGET_SLOT}"
+  else
+    compose -f docker-compose.bluegreen.yml build "app-${TARGET_SLOT}"
+  fi
+else
+  echo "[2/5] 跳过构建与拉取（使用本地已有镜像）"
+fi
+
+echo "[3/5] 拉起目标槽位..."
+if [ "${APP_BUILD_ENABLED}" = "true" ]; then
+  compose -f docker-compose.bluegreen.yml up -d "app-${TARGET_SLOT}"
+else
+  compose -f docker-compose.bluegreen.yml up -d --no-build "app-${TARGET_SLOT}"
+fi
+
+echo "[4/5] 等待目标槽位健康..."
 TRIES=60
 until [ "${TRIES}" -le 0 ]; do
   if curl -fsS "http://127.0.0.1:${TARGET_PORT}/actuator/health" | grep -q '"status"[[:space:]]*:[[:space:]]*"UP"'; then
@@ -73,14 +123,14 @@ if [ "${TRIES}" -le 0 ]; then
   exit 1
 fi
 
-echo "[3/4] 切换 Nginx upstream..."
+echo "[5/5] 切换 Nginx upstream..."
 bash scripts/huawei/switch-bluegreen.sh "${TARGET_SLOT}"
 
 if [ "${STOP_OLD:-false}" = "true" ] && [ "${OLD_SLOT}" != "none" ]; then
-  echo "[4/4] 停止旧槽位 app-${OLD_SLOT}"
+  echo "停止旧槽位 app-${OLD_SLOT}"
   compose -f docker-compose.bluegreen.yml stop "app-${OLD_SLOT}"
 else
-  echo "[4/4] 保留旧槽位运行，便于秒级回滚"
+  echo "保留旧槽位运行，便于秒级回滚"
 fi
 
 echo "蓝绿发布成功。当前 active=${TARGET_SLOT}"
