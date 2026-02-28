@@ -11,6 +11,7 @@ cd "${ROOT_DIR}"
 
 APP_DIR="${ROOT_DIR}"
 APP_PORT="${APP_PORT:-8080}"
+ENABLE_DOCKER_MIRROR="${ENABLE_DOCKER_MIRROR:-true}"
 DOCKER_REGISTRY_MIRRORS="${DOCKER_REGISTRY_MIRRORS:-https://docker.m.daocloud.io,https://mirror.ccs.tencentyun.com,https://hub-mirror.c.163.com}"
 HUAWEI_SWR_MIRROR="${HUAWEI_SWR_MIRROR:-}"
 ENABLE_HUAWEI_APT_MIRROR="${ENABLE_HUAWEI_APT_MIRROR:-true}"
@@ -30,6 +31,10 @@ while [ "$#" -gt 0 ]; do
       DOCKER_REGISTRY_MIRRORS="${2:-${DOCKER_REGISTRY_MIRRORS}}"
       shift 2
       ;;
+    --disable-docker-mirror)
+      ENABLE_DOCKER_MIRROR="false"
+      shift 1
+      ;;
     --swr-mirror)
       HUAWEI_SWR_MIRROR="${2:-${HUAWEI_SWR_MIRROR}}"
       shift 2
@@ -40,7 +45,7 @@ while [ "$#" -gt 0 ]; do
       ;;
     *)
       echo "未知参数: $1"
-      echo "用法: sudo bash scripts/huawei/bootstrap-test-ip.sh [--app-dir /opt/patch-lifecycle] [--app-port 8080] [--docker-mirrors ...] [--swr-mirror ...] [--disable-huawei-apt-mirror]"
+      echo "用法: sudo bash scripts/huawei/bootstrap-test-ip.sh [--app-dir /opt/patch-lifecycle] [--app-port 8080] [--docker-mirrors ...] [--disable-docker-mirror] [--swr-mirror ...] [--disable-huawei-apt-mirror]"
       exit 1
       ;;
   esac
@@ -74,6 +79,7 @@ set_env_value APP_PORT "${APP_PORT}"
 set_env_value APP_BUILD_ENABLED "true"
 set_env_value APP_PULL_IMAGE "false"
 set_env_value COMPOSE_BUILD_PULL "false"
+set_env_value ENABLE_DOCKER_MIRROR "${ENABLE_DOCKER_MIRROR}"
 if [ -n "${HUAWEI_SWR_MIRROR}" ]; then
   set_env_value HUAWEI_SWR_MIRROR "\"${HUAWEI_SWR_MIRROR}\""
   DOCKER_REGISTRY_MIRRORS="${HUAWEI_SWR_MIRROR},${DOCKER_REGISTRY_MIRRORS}"
@@ -90,6 +96,7 @@ if grep -q '^GRAFANA_ADMIN_PASSWORD=please_change_grafana_password' .env || grep
 fi
 
 export DOCKER_REGISTRY_MIRRORS
+export ENABLE_DOCKER_MIRROR
 if [ -n "${HUAWEI_SWR_MIRROR}" ]; then
   export HUAWEI_SWR_MIRROR
 fi

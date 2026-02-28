@@ -16,7 +16,7 @@ sudo bash scripts/huawei/bootstrap-test-ip.sh
 3. 自动设置：
    - `APP_BIND_IP=0.0.0.0`（支持 IP 直连）
    - `DB_BIND_IP=127.0.0.1`（数据库不暴露公网）
-4. 自动配置 Docker 镜像加速（默认）：
+4. 自动配置 Docker 镜像加速（默认，可关闭）：
    - `https://docker.m.daocloud.io`
    - `https://mirror.ccs.tencentyun.com`
    - `https://hub-mirror.c.163.com`
@@ -34,6 +34,12 @@ sudo bash scripts/huawei/bootstrap-test-ip.sh
 sudo bash scripts/huawei/bootstrap-test-ip.sh \
   --app-port 8080 \
   --docker-mirrors "https://docker.m.daocloud.io,https://mirror.ccs.tencentyun.com"
+```
+
+禁用脚本写入 `/etc/docker/daemon.json`：
+
+```bash
+sudo bash scripts/huawei/bootstrap-test-ip.sh --disable-docker-mirror
 ```
 
 华为云 SWR 专属加速（推荐）：
