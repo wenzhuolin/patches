@@ -9,6 +9,9 @@ LOG_FILE="${RUNTIME_DIR}/app.log"
 DB_FILE="${SQLITE_PATH:-${DATA_DIR}/patches-test.db}"
 
 APP_PORT="${APP_PORT:-18080}"
+SERVER_ADDRESS="${SERVER_ADDRESS:-0.0.0.0}"
+HEALTH_CHECK_HOST="${HEALTH_CHECK_HOST:-127.0.0.1}"
+PUBLIC_HOST="${PUBLIC_HOST:-}"
 JAVA_OPTS="${JAVA_OPTS:--Xms256m -Xmx1024m}"
 START_TIMEOUT_SEC="${START_TIMEOUT_SEC:-90}"
 SKIP_BUILD="${SKIP_BUILD:-false}"
@@ -21,12 +24,61 @@ Usage:
 
 Environment variables:
   APP_PORT=18080                    # Spring Boot listen port
+  SERVER_ADDRESS=0.0.0.0            # Bind address for remote access
+  HEALTH_CHECK_HOST=127.0.0.1       # Host used by local health check
+  PUBLIC_HOST=<server-ip-or-domain> # Host displayed in output links
   SQLITE_PATH=.runtime/test-env/data/patches-test.db
   JAVA_OPTS="-Xms256m -Xmx1024m"
   START_TIMEOUT_SEC=90
   SKIP_BUILD=false                  # true to skip mvn package
   TAIL_LINES=200                    # lines for logs command
 USAGE
+}
+
+print_java_fix_hint() {
+  cat <<'HINT'
+当前环境不满足编译要求：项目需要 JDK 21（maven-compiler-plugin --release 21）。
+
+请执行以下步骤：
+  1) 安装 JDK 21
+     Ubuntu:
+       sudo apt update && sudo apt install -y openjdk-21-jdk
+     CentOS/RHEL:
+       sudo dnf install -y java-21-openjdk-devel
+
+  2) 设置 JAVA_HOME（示例）
+       export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
+       export PATH="$JAVA_HOME/bin:$PATH"
+
+  3) 验证 Maven 实际使用的 Java 版本
+       java -version
+       ./mvnw -v
+
+确认 ./mvnw -v 显示 Java 21 后，再执行：
+  bash scripts/start-test-env.sh start
+HINT
+}
+
+check_java21() {
+  if ! command -v java >/dev/null 2>&1; then
+    echo "未找到 java 命令。"
+    print_java_fix_hint
+    exit 1
+  fi
+
+  if ! command -v javac >/dev/null 2>&1; then
+    echo "未找到 javac 命令。当前可能是 JRE 而非 JDK。"
+    print_java_fix_hint
+    exit 1
+  fi
+
+  if ! javac --release 21 -version >/dev/null 2>&1; then
+    echo "当前 JDK 不支持 --release 21。"
+    echo "java version: $(java -version 2>&1 | sed -n '1p')"
+    echo "javac version: $(javac -version 2>&1 | sed -n '1p')"
+    print_java_fix_hint
+    exit 1
+  fi
 }
 
 is_running() {
@@ -58,7 +110,7 @@ resolve_jar() {
 }
 
 wait_for_health() {
-  local url="http://127.0.0.1:${APP_PORT}/actuator/health"
+  local url="http://${HEALTH_CHECK_HOST}:${APP_PORT}/actuator/health"
   local i
   for ((i=1; i<=START_TIMEOUT_SEC; i++)); do
     if curl -fsS "${url}" >/dev/null 2>&1; then
@@ -79,6 +131,8 @@ start_app() {
 
   mkdir -p "${RUNTIME_DIR}" "${DATA_DIR}"
 
+  check_java21
+
   if [[ "${SKIP_BUILD}" != "true" ]]; then
     echo "[1/3] Building application jar..."
     (
@@ -96,12 +150,22 @@ start_app() {
     exit 1
   fi
 
+  local shown_host
+  shown_host="${PUBLIC_HOST}"
+  if [[ -z "${shown_host}" ]]; then
+    shown_host="$(hostname -I 2>/dev/null | awk '{print $1}')"
+  fi
+  if [[ -z "${shown_host}" ]]; then
+    shown_host="127.0.0.1"
+  fi
+
   echo "[2/3] Starting app with SQLite test database..."
   (
     cd "${ROOT_DIR}"
     DB_TYPE=sqlite \
     SQLITE_PATH="${DB_FILE}" \
     SERVER_PORT="${APP_PORT}" \
+    SERVER_ADDRESS="${SERVER_ADDRESS}" \
     nohup java ${JAVA_OPTS} -jar "${jar}" >"${LOG_FILE}" 2>&1 &
     echo $! > "${PID_FILE}"
   )
@@ -119,7 +183,9 @@ start_app() {
   echo "PID: $(cat "${PID_FILE}")"
   echo "Log: ${LOG_FILE}"
   echo "SQLite DB: ${DB_FILE}"
-  echo "Swagger: http://127.0.0.1:${APP_PORT}/swagger-ui.html"
+  echo "Local Swagger:  http://127.0.0.1:${APP_PORT}/swagger-ui.html"
+  echo "Remote Swagger: http://${shown_host}:${APP_PORT}/swagger-ui.html"
+  echo "Remote Health:  http://${shown_host}:${APP_PORT}/actuator/health"
 }
 
 stop_app() {
@@ -157,9 +223,19 @@ stop_app() {
 }
 
 status_app() {
+  local shown_host
+  shown_host="${PUBLIC_HOST}"
+  if [[ -z "${shown_host}" ]]; then
+    shown_host="$(hostname -I 2>/dev/null | awk '{print $1}')"
+  fi
+  if [[ -z "${shown_host}" ]]; then
+    shown_host="127.0.0.1"
+  fi
+
   if is_running; then
     echo "RUNNING (PID: $(cat "${PID_FILE}"))"
-    echo "Health URL: http://127.0.0.1:${APP_PORT}/actuator/health"
+    echo "Local Health URL:  http://${HEALTH_CHECK_HOST}:${APP_PORT}/actuator/health"
+    echo "Remote Health URL: http://${shown_host}:${APP_PORT}/actuator/health"
     echo "Log: ${LOG_FILE}"
     echo "SQLite DB: ${DB_FILE}"
   else
@@ -168,7 +244,7 @@ status_app() {
 }
 
 health_app() {
-  local url="http://127.0.0.1:${APP_PORT}/actuator/health"
+  local url="http://${HEALTH_CHECK_HOST}:${APP_PORT}/actuator/health"
   echo "Checking ${url}"
   curl -fsS "${url}"
   echo

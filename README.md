@@ -111,9 +111,26 @@ bash scripts/start-test-env.sh stop
 ```bash
 export APP_PORT=18080
 export SQLITE_PATH=./.runtime/test-env/data/patches-test.db
+export SERVER_ADDRESS=0.0.0.0
+export PUBLIC_HOST=<你的服务器公网IP或域名>
 export SKIP_BUILD=false
 export START_TIMEOUT_SEC=90
 ```
+
+常见报错处理：
+
+- 报错 `maven-compiler-plugin: release version 21 not supported`
+  - 原因：当前 Maven 使用的 Java 不是 21（或仅安装了 JRE）。
+  - 修复：
+    ```bash
+    # Ubuntu
+    sudo apt update && sudo apt install -y openjdk-21-jdk
+    export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
+    export PATH="$JAVA_HOME/bin:$PATH"
+
+    java -version
+    ./mvnw -v   # 必须显示 Java 21
+    ```
 
 ### 3.2 华为云 Linux 一键部署（Docker Compose）
 
