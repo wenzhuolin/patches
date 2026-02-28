@@ -16,25 +16,57 @@ if [ ! -f "${ENV_FILE}" ]; then
 fi
 ok ".env 存在"
 
-# shellcheck disable=SC1090
-set -a; source "${ENV_FILE}"; set +a
+read_env_value() {
+  local key="$1"
+  local value
+  value="$(awk -v k="${key}" '
+    /^[[:space:]]*#/ { next }
+    $0 ~ "^[[:space:]]*"k"[[:space:]]*=" {
+      sub(/^[^=]*=/, "", $0)
+      print $0
+      exit
+    }
+  ' "${ENV_FILE}")"
+  # trim surrounding spaces
+  value="${value#"${value%%[![:space:]]*}"}"
+  value="${value%"${value##*[![:space:]]}"}"
+  # strip a pair of outer quotes if present
+  if [[ "${value}" =~ ^\".*\"$ ]]; then
+    value="${value:1:${#value}-2}"
+  elif [[ "${value}" =~ ^\'.*\'$ ]]; then
+    value="${value:1:${#value}-2}"
+  fi
+  printf '%s' "${value}"
+}
 
-if [ "${POSTGRES_PASSWORD:-}" = "please_change_me" ] || [ -z "${POSTGRES_PASSWORD:-}" ]; then
+POSTGRES_PASSWORD="$(read_env_value POSTGRES_PASSWORD)"
+GRAFANA_ADMIN_PASSWORD="$(read_env_value GRAFANA_ADMIN_PASSWORD)"
+DB_BIND_IP="$(read_env_value DB_BIND_IP)"
+APP_BIND_IP="$(read_env_value APP_BIND_IP)"
+APP_PORT="$(read_env_value APP_PORT)"
+DB_PORT="$(read_env_value DB_PORT)"
+
+DB_BIND_IP="${DB_BIND_IP:-127.0.0.1}"
+APP_BIND_IP="${APP_BIND_IP:-127.0.0.1}"
+APP_PORT="${APP_PORT:-8080}"
+DB_PORT="${DB_PORT:-5432}"
+
+if [ "${POSTGRES_PASSWORD}" = "please_change_me" ] || [ -z "${POSTGRES_PASSWORD}" ]; then
   fail "POSTGRES_PASSWORD 未修改或为空"
 fi
 ok "数据库密码已配置"
 
-if [ "${GRAFANA_ADMIN_PASSWORD:-}" = "please_change_grafana_password" ]; then
+if [ "${GRAFANA_ADMIN_PASSWORD}" = "please_change_grafana_password" ] || [ -z "${GRAFANA_ADMIN_PASSWORD}" ]; then
   warn "GRAFANA_ADMIN_PASSWORD 仍为默认模板值，建议修改"
 fi
 
-if [ "${DB_BIND_IP:-127.0.0.1}" != "127.0.0.1" ]; then
+if [ "${DB_BIND_IP}" != "127.0.0.1" ]; then
   warn "DB_BIND_IP 非 127.0.0.1，数据库可能暴露到公网，请确认安全策略"
 else
   ok "数据库默认仅本机绑定"
 fi
 
-if [ "${APP_BIND_IP:-127.0.0.1}" != "127.0.0.1" ]; then
+if [ "${APP_BIND_IP}" != "127.0.0.1" ]; then
   warn "APP_BIND_IP 非 127.0.0.1，建议通过 Nginx 统一入口暴露"
 else
   ok "应用默认仅本机绑定"
@@ -79,7 +111,7 @@ if [ -n "${DOMAIN}" ]; then
   fi
 fi
 
-for port in "${APP_PORT:-8080}" "${DB_PORT:-5432}" 80 443; do
+for port in "${APP_PORT}" "${DB_PORT}" 80 443; do
   if ss -ltn "( sport = :${port} )" | grep -q ":${port}"; then
     warn "端口 ${port} 已被占用，请确认是否预期"
   else
