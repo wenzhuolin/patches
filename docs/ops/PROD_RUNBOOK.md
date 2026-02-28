@@ -5,6 +5,9 @@
 > 若为**测试环境**且无法直连 Docker Hub，请参考：
 > `docs/ops/PRIVATE_REGISTRY_TEST_DEPLOY.md`
 
+> 若为**无域名/IP直连测试环境**并希望免配置一键安装，请执行：
+> `sudo bash scripts/huawei/bootstrap-test-ip.sh`
+
 ## 0. 变量约定
 
 - 域名：`api.example.com`
