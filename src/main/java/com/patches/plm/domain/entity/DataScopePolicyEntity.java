@@ -22,7 +22,7 @@ public class DataScopePolicyEntity extends AbstractAuditEntity {
     private String resourceType;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "scope_expr", nullable = false, columnDefinition = "jsonb")
+    @Column(name = "scope_expr", nullable = false)
     private String scopeExpr;
 
     @Column(name = "enabled", nullable = false)

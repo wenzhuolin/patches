@@ -11,11 +11,9 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.util.UUID;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -24,22 +22,23 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
-@Testcontainers(disabledWithoutDocker = true)
 class PatchLifecycleIntegrationTest {
 
-    @Container
-    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine")
-            .withDatabaseName("patches")
-            .withUsername("patches")
-            .withPassword("patches");
+    private static final String SQLITE_DB_PATH = Path.of(
+            System.getProperty("java.io.tmpdir"),
+            "patch-lifecycle-it-" + UUID.randomUUID() + ".db"
+    ).toString();
 
     @DynamicPropertySource
     static void configureDatasource(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", postgres::getJdbcUrl);
-        registry.add("spring.datasource.username", postgres::getUsername);
-        registry.add("spring.datasource.password", postgres::getPassword);
-        registry.add("spring.flyway.enabled", () -> true);
-        registry.add("spring.jpa.hibernate.ddl-auto", () -> "validate");
+        registry.add("spring.datasource.url", () -> "jdbc:sqlite:" + SQLITE_DB_PATH);
+        registry.add("spring.datasource.driver-class-name", () -> "org.sqlite.JDBC");
+        registry.add("spring.datasource.hikari.maximum-pool-size", () -> "1");
+        registry.add("spring.datasource.hikari.minimum-idle", () -> "1");
+        registry.add("spring.datasource.hikari.idle-timeout", () -> "0");
+        registry.add("spring.datasource.hikari.max-lifetime", () -> "0");
+        registry.add("spring.jpa.properties.hibernate.dialect", () -> "org.hibernate.community.dialect.SQLiteDialect");
+        registry.add("spring.flyway.locations", () -> "classpath:db/migration/sqlite");
         registry.add("app.notify.mail.worker-interval-ms", () -> "3600000");
     }
 

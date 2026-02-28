@@ -28,7 +28,7 @@ public class DeliveryScenarioEntity extends AbstractAuditEntity {
     private String status = "ACTIVE";
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "ext_props", columnDefinition = "jsonb")
+    @Column(name = "ext_props")
     private String extProps;
 
     public Long getId() {

@@ -22,11 +22,11 @@ public class MailEventPolicyEntity extends AbstractAuditEntity {
     private String templateCode;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "to_roles", columnDefinition = "jsonb")
+    @Column(name = "to_roles")
     private String toRoles;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "cc_roles", columnDefinition = "jsonb")
+    @Column(name = "cc_roles")
     private String ccRoles;
 
     @Column(name = "include_owner", nullable = false)

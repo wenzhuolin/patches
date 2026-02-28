@@ -1,6 +1,6 @@
 # Patch Lifecycle Management System
 
-基于 **Java 21 + Spring Boot 3 + PostgreSQL + Flyway** 的补丁生命周期管理系统（后端MVP）。
+基于 **Java 21 + Spring Boot 3 + Flyway + 可切换数据库（SQLite/MySQL/PostgreSQL）** 的补丁生命周期管理系统（后端MVP）。
 
 ## 1. 当前实现范围
 
@@ -46,7 +46,7 @@
 ## 2. 技术栈
 
 - 后端：Spring Boot 3.5.0
-- 数据库：PostgreSQL（Flyway 管理DDL）
+- 数据库：SQLite（测试默认）/ MySQL / PostgreSQL（Flyway 管理DDL）
 - 文档：OpenAPI（Swagger UI）
 - 测试：JUnit 5
 
@@ -54,7 +54,7 @@
 
 ### 3.1 本地运行
 
-> 需要可用 PostgreSQL 实例（默认连接参数见 `application.yml`，可用环境变量覆盖）
+> 默认使用 SQLite（单文件，无外部依赖），可通过 `DB_TYPE` 切换到 MySQL 或 PostgreSQL。
 
 ```bash
 ./mvnw clean test
@@ -64,14 +64,56 @@
 环境变量示例：
 
 ```bash
-export DB_URL=jdbc:postgresql://127.0.0.1:5432/patches
-export DB_USERNAME=patches
-export DB_PASSWORD=patches
+# DB_TYPE: sqlite / mysql / postgres
+export DB_TYPE=sqlite
+export SQLITE_PATH=./data/patches-dev.db
+
+# MySQL 示例
+# export DB_TYPE=mysql
+# export MYSQL_HOST=127.0.0.1
+# export MYSQL_PORT=3306
+# export MYSQL_DATABASE=patches
+# export MYSQL_USER=patches
+# export MYSQL_PASSWORD=patches
+
+# PostgreSQL 示例
+# export DB_TYPE=postgres
+# export POSTGRES_HOST=127.0.0.1
+# export POSTGRES_PORT=5432
+# export POSTGRES_DATABASE=patches
+# export POSTGRES_USER=patches
+# export POSTGRES_PASSWORD=patches
 ```
 
 Swagger 地址：
 
 - `http://localhost:8080/swagger-ui.html`
+
+### 3.1.1 测试环境一键启动（SQLite）
+
+```bash
+# 启动（默认端口 18080）
+bash scripts/start-test-env.sh start
+
+# 查看状态/健康
+bash scripts/start-test-env.sh status
+bash scripts/start-test-env.sh health
+
+# 查看日志
+bash scripts/start-test-env.sh logs
+
+# 停止
+bash scripts/start-test-env.sh stop
+```
+
+可选环境变量：
+
+```bash
+export APP_PORT=18080
+export SQLITE_PATH=./.runtime/test-env/data/patches-test.db
+export SKIP_BUILD=false
+export START_TIMEOUT_SEC=90
+```
 
 ### 3.2 华为云 Linux 一键部署（Docker Compose）
 
@@ -292,9 +334,9 @@ sudo bash scripts/huawei/install-maintenance-cron.sh /opt/patch-lifecycle
 
 Flyway 脚本：
 
-- `src/main/resources/db/migration/V1__init_schema.sql`
-- `src/main/resources/db/migration/V2__iam_and_integration.sql`
-- `src/main/resources/db/migration/V3__user_role_and_attachment.sql`
+- PostgreSQL: `src/main/resources/db/migration/*.sql`
+- MySQL: `src/main/resources/db/migration/mysql/*.sql`
+- SQLite: `src/main/resources/db/migration/sqlite/*.sql`
 
 已包含核心表：`patch / patch_transition_log / kpi_* / qa_* / test_task / review_* / patch_operation_log / role_action_permission / user_data_scope / integration_connector / sys_user / user_role_relation / patch_attachment`
 

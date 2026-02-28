@@ -27,11 +27,11 @@ public class PatchOperationLogEntity {
     private String action;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "before_data", columnDefinition = "jsonb")
+    @Column(name = "before_data")
     private String beforeData;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "after_data", columnDefinition = "jsonb")
+    @Column(name = "after_data")
     private String afterData;
 
     @Column(name = "operator_id", nullable = false)
