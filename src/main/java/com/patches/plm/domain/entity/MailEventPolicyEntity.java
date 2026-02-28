@@ -1,6 +1,8 @@
 package com.patches.plm.domain.entity;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "mail_event_policy")
@@ -19,9 +21,11 @@ public class MailEventPolicyEntity extends AbstractAuditEntity {
     @Column(name = "template_code", nullable = false, length = 64)
     private String templateCode;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "to_roles", columnDefinition = "jsonb")
     private String toRoles;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "cc_roles", columnDefinition = "jsonb")
     private String ccRoles;
 

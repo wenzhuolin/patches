@@ -1,6 +1,8 @@
 package com.patches.plm.domain.entity;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "mail_server_config")
@@ -55,6 +57,7 @@ public class MailServerConfigEntity extends AbstractAuditEntity {
     @Column(name = "enabled", nullable = false)
     private boolean enabled = true;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "ext_props", columnDefinition = "jsonb")
     private String extProps;
 

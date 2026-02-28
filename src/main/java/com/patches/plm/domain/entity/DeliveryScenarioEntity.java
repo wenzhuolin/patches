@@ -1,6 +1,8 @@
 package com.patches.plm.domain.entity;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "delivery_scenario")
@@ -25,6 +27,7 @@ public class DeliveryScenarioEntity extends AbstractAuditEntity {
     @Column(name = "status", nullable = false, length = 32)
     private String status = "ACTIVE";
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "ext_props", columnDefinition = "jsonb")
     private String extProps;
 

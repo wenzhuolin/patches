@@ -1,6 +1,8 @@
 package com.patches.plm.domain.entity;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "data_scope_policy")
@@ -19,6 +21,7 @@ public class DataScopePolicyEntity extends AbstractAuditEntity {
     @Column(name = "resource_type", nullable = false, length = 32)
     private String resourceType;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "scope_expr", nullable = false, columnDefinition = "jsonb")
     private String scopeExpr;
 

@@ -1,6 +1,8 @@
 package com.patches.plm.domain.entity;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.OffsetDateTime;
 
@@ -23,9 +25,11 @@ public class ConfigChangeLogEntity {
     @Column(name = "action", nullable = false, length = 32)
     private String action;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "before_data", columnDefinition = "jsonb")
     private String beforeData;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "after_data", columnDefinition = "jsonb")
     private String afterData;
 
