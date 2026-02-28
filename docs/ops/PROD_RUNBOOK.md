@@ -2,6 +2,9 @@
 
 > 目标：在一台有公网 IP 的华为云 Linux 服务器完成稳定上线，并具备可回滚能力。
 
+> 若为**测试环境**且无法直连 Docker Hub，请参考：
+> `docs/ops/PRIVATE_REGISTRY_TEST_DEPLOY.md`
+
 ## 0. 变量约定
 
 - 域名：`api.example.com`
