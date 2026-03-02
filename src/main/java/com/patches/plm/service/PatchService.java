@@ -319,8 +319,15 @@ public class PatchService {
                 patch.isKpiBlocked(),
                 patch.isQaBlocked(),
                 patch.getTitle(),
+                patch.getProductLineId(),
+                patch.getDescription(),
                 patch.getSeverity(),
-                patch.getPriority()
+                patch.getPriority(),
+                patch.getSourceVersion(),
+                patch.getTargetVersion(),
+                patch.getOwnerPmId(),
+                patch.getCreatedAt(),
+                patch.getUpdatedAt()
         );
     }
 

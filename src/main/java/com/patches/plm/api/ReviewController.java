@@ -9,6 +9,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/v1/review-sessions")
 public class ReviewController {
@@ -26,6 +28,20 @@ public class ReviewController {
                                                      HttpServletRequest httpRequest) {
         RequestContext context = requestContextResolver.resolve(httpRequest);
         return ApiResponse.success(reviewService.createSession(context.tenantId(), request, context));
+    }
+
+    @GetMapping
+    public ApiResponse<List<ReviewSessionResponse>> list(@RequestParam(required = false) Long patchId,
+                                                         HttpServletRequest httpRequest) {
+        RequestContext context = requestContextResolver.resolve(httpRequest);
+        return ApiResponse.success(reviewService.listSessions(context.tenantId(), patchId));
+    }
+
+    @GetMapping("/{sessionId}")
+    public ApiResponse<ReviewSessionDetailResponse> detail(@PathVariable Long sessionId,
+                                                           HttpServletRequest httpRequest) {
+        RequestContext context = requestContextResolver.resolve(httpRequest);
+        return ApiResponse.success(reviewService.getSessionDetail(context.tenantId(), sessionId));
     }
 
     @PostMapping("/{sessionId}/votes")

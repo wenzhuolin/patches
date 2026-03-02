@@ -106,6 +106,14 @@ bash scripts/start-test-env.sh logs
 bash scripts/start-test-env.sh stop
 ```
 
+启动成功后页面入口：
+
+- 业务门户（前端界面）：`http://<host>:<port>/`
+- Swagger：`http://<host>:<port>/swagger-ui.html`
+
+首次进入业务门户时，需要填写“业务上下文登录信息”（租户ID、用户ID、角色集合）。
+建议测试使用角色：`SUPER_ADMIN,LINE_ADMIN,PM,REVIEWER,PRODUCT_LINE_QA,TEST,DEV`。
+
 可选环境变量：
 
 ```bash

@@ -12,6 +12,7 @@ import com.patches.plm.web.RequestContext;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Locale;
 
 @Service
@@ -50,7 +51,49 @@ public class ReviewService {
         entity.setUpdatedBy(context.userId());
         ReviewSessionEntity saved = reviewSessionRepository.save(entity);
         auditLogService.log("REVIEW_SESSION", saved.getId(), "CREATE", null, saved, context);
-        return new ReviewSessionResponse(saved.getId(), saved.getPatchId(), saved.getMode(), saved.getStatus(), saved.getConclusion(), 0.0);
+        return toSessionResponse(saved);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ReviewSessionResponse> listSessions(Long tenantId, Long patchId) {
+        List<ReviewSessionEntity> sessions = patchId == null
+                ? reviewSessionRepository.findByTenantIdOrderByUpdatedAtDesc(tenantId)
+                : reviewSessionRepository.findByTenantIdAndPatchIdOrderByUpdatedAtDesc(tenantId, patchId);
+        return sessions.stream().map(this::toSessionResponse).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public ReviewSessionDetailResponse getSessionDetail(Long tenantId, Long sessionId) {
+        ReviewSessionEntity session = reviewSessionRepository.findByIdAndTenantId(sessionId, tenantId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "评审会不存在"));
+        List<ReviewVoteEntity> votes = reviewVoteRepository.findBySessionIdOrderByVotedAtDesc(sessionId);
+        long pass = votes.stream().filter(v -> "PASS".equalsIgnoreCase(v.getVote())).count();
+        long reject = votes.stream().filter(v -> "REJECT".equalsIgnoreCase(v.getVote())).count();
+        long abstain = votes.stream().filter(v -> "ABSTAIN".equalsIgnoreCase(v.getVote())).count();
+        long total = votes.size();
+        double approveRate = total == 0 ? 0.0 : pass * 100.0 / total;
+        List<ReviewVoteDetailResponse> voteResponses = votes.stream()
+                .map(v -> new ReviewVoteDetailResponse(v.getId(), v.getVoterId(), v.getVote(), v.getComment(), v.getVotedAt()))
+                .toList();
+        return new ReviewSessionDetailResponse(
+                session.getId(),
+                session.getPatchId(),
+                session.getMode(),
+                session.getMeetingTool(),
+                session.getMeetingUrl(),
+                session.getQuorumRequired(),
+                session.getApproveRateRequired(),
+                session.getStatus(),
+                session.getConclusion(),
+                approveRate,
+                total,
+                pass,
+                reject,
+                abstain,
+                session.getCreatedAt(),
+                session.getUpdatedAt(),
+                voteResponses
+        );
     }
 
     @Transactional
@@ -97,5 +140,19 @@ public class ReviewService {
                 new ReviewSessionResponse(session.getId(), session.getPatchId(), session.getMode(),
                         session.getStatus(), session.getConclusion(), approveRate), context);
         return new ReviewVoteResponse(sessionId, context.userId(), vote, request.comment());
+    }
+
+    private ReviewSessionResponse toSessionResponse(ReviewSessionEntity session) {
+        long total = reviewVoteRepository.countBySessionId(session.getId());
+        long pass = reviewVoteRepository.countBySessionIdAndVote(session.getId(), "PASS");
+        double approveRate = total == 0 ? 0.0 : pass * 100.0 / total;
+        return new ReviewSessionResponse(
+                session.getId(),
+                session.getPatchId(),
+                session.getMode(),
+                session.getStatus(),
+                session.getConclusion(),
+                approveRate
+        );
     }
 }
